@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carta Digital Interactiva - SW&Go</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SDK Oficial de Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: 'var(--brand-primary, #12B89B)',
+              dark: 'var(--brand-dark, #0E937C)',
+              light: 'var(--brand-light, #EDFBF8)',
+            },
+            base: {
+              bg: '#F9FAFB',
+              card: '#FFFFFF',
+              border: '#E5E7EB',
+              text: '#1F2937',
+              muted: '#6B7280',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .font-serif-title { font-family: 'Playfair Display', serif; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @keyframes cartPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+    .cart-bump { animation: cartPop 0.25s ease-out; }
+
+    .flying-dot {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--brand-primary, #12B89B);
+      transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="bg-base-bg text-base-text pb-32 min-h-screen font-sans">
+
+  <!-- Header Compacto y Limpio -->
+  <header class="bg-base-card/95 backdrop-blur-md text-base-text py-3 sticky top-0 z-20 border-b border-base-border shadow-sm">
+    <div class="max-w-md mx-auto px-4 flex items-center justify-between gap-2 box-border">
+      
+      <!-- Zona Izquierda: Número de mesa + Idioma -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <div id="mesaNumberBox" class="h-[38px] w-[38px] rounded-xl bg-base-text text-base-card font-black text-xs flex items-center justify-center shadow-xs flex-shrink-0 box-border leading-none">
+          -
+        </div>
+
+        <select id="langSelect" onchange="changeLanguage(this.value)" class="h-[38px] bg-base-bg border border-base-border text-base-text text-xs font-bold rounded-xl px-2 outline-none shadow-inner cursor-pointer flex-shrink-0 box-border transition-colors focus:border-primary/50">
+          <option value="es">ES</option>
+          <option value="ca">CA</option>
+          <option value="en">EN</option>
+          <option value="fr">FR</option>
+          <option value="it">IT</option>
+        </select>
+      </div>
+
+      <!-- Zona Derecha: Mis Sellos + Campana + Mi Cuenta -->
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <button id="loyaltyHeaderBtn" onclick="openLoyaltyModal()" title="Mis Sellos" class="h-[38px] bg-primary-light hover:bg-primary/10 text-primary-dark border border-primary/20 px-2.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 flex-shrink-0 box-border leading-none">
+          <span>🎟️</span>
+          <span id="headerStampBadge" class="text-[11px] font-black">Sellos</span>
+        </button>
+
+        <button id="callWaiterHeaderBtn" onclick="callWaiter()" title="Llamar al camarero" class="h-[38px] w-[38px] bg-base-bg hover:bg-base-border/50 text-base-muted border border-base-border rounded-xl text-sm shadow-sm transition-all active:scale-90 flex items-center justify-center flex-shrink-0 box-border leading-none">
+          🔔
+        </button>
+
+        <button onclick="openBillModal()" class="h-[38px] bg-base-bg hover:bg-base-border/50 text-base-text px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-base-border transition-all active:scale-95 shadow-sm flex-shrink-0 box-border leading-none">
+          <span>🧾</span>
+          <span class="hidden sm:inline" id="txt-mi-cuenta">Mi Cuenta</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4 space-y-4">
+
+    <!-- Banner sutil de Fidelización -->
+    <div onclick="openLoyaltyModal()" class="bg-primary-light/50 border border-primary/20 rounded-2xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:border-primary/40 transition-all shadow-sm">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="text-base">🎁</span>
+        <p id="loyaltyBannerText" class="text-[11px] font-semibold text-primary-dark truncate">
+          Acumula 1 sello en esta visita y consigue premios
+        </p>
+      </div>
+      <span class="text-[11px] font-extrabold text-primary flex-shrink-0 ml-2">Ver →</span>
+    </div>
+
+    <!-- Buscador interactivo rápido -->
+    <div class="relative">
+      <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Buscar platos..." class="w-full bg-base-card border border-base-border rounded-2xl py-3 pl-10 pr-4 text-xs font-medium placeholder-base-muted/70 text-base-text outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all shadow-sm">
+      <span class="absolute left-3.5 top-3.5 text-base-muted/70 text-xs">🔍</span>
+      <button id="clearSearch" onclick="clearSearchInput()" class="hidden absolute right-3.5 top-3 text-base-muted hover:text-base-text text-xs font-bold">✕</button>
+    </div>
+
+    <!-- Barra de Categorías Dinámica -->
+    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none" id="categoriesBar">
+      <button onclick="filterCategory('Todos')" class="cat-btn hidden px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Todos</button>
+      <button onclick="filterCategory('Entrantes')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-text text-base-card shadow-md transition-all flex-shrink-0 active:scale-95">Entrantes</button>
+      <button onclick="filterCategory('Para picar')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Para picar</button>
+      <button onclick="filterCategory('Arroces')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Arroces</button>
+      <button onclick="filterCategory('Carnes')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Carnes</button>
+      <button onclick="filterCategory('Pescados')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Pescados</button>
+      <button onclick="filterCategory('Bebidas')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Bebidas</button>
+      <button onclick="filterCategory('Vinos')" class="cat-btn hidden px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Vinos</button>
+      <button onclick="filterCategory('Postres')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Postres</button>
+    </div>
+
+    <!-- Estado de Carga -->
+    <div id="loading" class="text-center py-20 text-base-muted text-xs font-semibold">
+      <div class="w-7 h-7 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      Cargando carta...
+    </div>
+
+    <!-- Listado de Platos -->
+    <div id="productList" class="grid grid-cols-1 gap-3.5 hidden"></div>
+  </main>
+
+  <!-- Carrito Flotante Dinámico -->
+  <div id="cartBar" class="fixed bottom-0 left-0 right-0 bg-base-card/95 backdrop-blur-md border-t border-base-border p-4 shadow-xl hidden z-30 transition-transform">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-primary-light text-primary-dark flex items-center justify-center font-bold text-sm border border-primary/20">
+          🛍️
+        </div>
+        <div>
+          <p class="text-[11px] text-base-muted font-semibold" id="cartCount">0 productos</p>
+          <p class="text-lg font-black text-base-text tracking-tight" id="cartTotal">0.00 €</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openModal()" class="bg-primary hover:bg-primary-dark text-white font-bold px-5 py-3 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 text-xs uppercase tracking-wider">
+          <span id="txt-ver-comanda">Ver Comanda</span>
+          <span>→</span>
+        </button>
+        <button id="callWaiterBtn" onclick="callWaiter()" title="Llamar al camarero" class="bg-base-bg hover:bg-base-border/50 text-base-muted border border-base-border p-3 rounded-xl shadow-sm transition-all active:scale-90 flex items-center justify-center text-base">
+          🔔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Comanda -->
+  <div id="orderModal" class="fixed inset-0 bg-base-text/50 backdrop-blur-sm z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-base-card rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto border border-base-border shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <h2 class="font-serif-title font-bold text-lg text-base-text">Comanda de la mesa</h2>
+        <button onclick="closeModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+      
+      <div id="modalItems" class="divide-y divide-base-border text-sm"></div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Instrucciones o notas para sala/cocina:</label>
+        <textarea id="orderNotes" rows="2" placeholder="Ej. Punto de la carne, refresco de la copa, sacar platos juntos..." class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs outline-none focus:border-primary/50 text-base-text transition-all"></textarea>
+      </div>
+      <button id="sendBtn" onclick="submitOrder()" class="w-full bg-base-text hover:bg-black text-base-card font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-98 text-xs uppercase tracking-wider">
+        Enviar a Preparación
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de Cuenta Acumulada -->
+  <div id="billModal" class="fixed inset-0 bg-base-text/50 backdrop-blur-sm z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-base-card rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto border border-base-border shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <div>
+          <h2 class="font-serif-title font-bold text-lg text-base-text">Cuenta Acumulada</h2>
+          <p class="text-xs text-base-muted" id="billMesaTitle">Consumos vivos</p>
+        </div>
+        <button onclick="closeBillModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+      
+      <div id="billContent" class="text-sm space-y-2.5">
+        <p class="text-center py-6 text-base-muted text-xs">Cargando desglose...</p>
+      </div>
+
+      <div class="border-t border-base-border pt-3 flex justify-between items-center">
+        <span class="font-extrabold text-xs text-base-muted uppercase tracking-wider">Total a pagar</span>
+        <span id="billGrandTotal" class="text-xl font-black text-primary">0.00 €</span>
+      </div>
+
+      <button onclick="closeBillModal()" class="w-full bg-base-bg hover:bg-base-border/50 text-base-text font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-wider">
+        Volver a la carta
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de Tarjeta de Fidelización -->
+  <div id="loyaltyModal" class="fixed inset-0 bg-base-text/50 backdrop-blur-sm z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-base-card rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto border border-base-border shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <div>
+          <h2 class="font-serif-title font-bold text-lg text-base-text" id="loyaltyRestName">Tarjeta de Sellos</h2>
+          <p class="text-xs text-base-muted">1 sello por visita al cerrar la mesa</p>
+        </div>
+        <button onclick="closeLoyaltyModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+
+      <div id="loyaltyPhoneForm" class="space-y-3">
+        <p class="text-xs text-base-muted leading-relaxed">
+          Introduce tu número de móvil para guardar tus sellos en este local. Solo te lo pediremos una vez.
+        </p>
+        <input type="tel" id="loyaltyPhoneInput" placeholder="Ej. 612345678" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-bold outline-none focus:border-primary/50 text-base-text">
+        <button onclick="saveCustomerPhone()" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-md transition-all text-xs uppercase tracking-wider">
+          Guardar y ver mis sellos
+        </button>
+      </div>
+
+      <div id="loyaltyCardView" class="hidden space-y-4">
+        <div class="bg-base-text text-base-card rounded-2xl p-4 space-y-3 shadow-md">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] uppercase tracking-wider text-base-muted font-bold">Móvil vinculado</span>
+            <span id="cardPhoneDisplay" class="text-xs font-black text-primary-light">-</span>
+          </div>
+          
+          <div id="stampsGrid" class="grid grid-cols-4 gap-2.5 py-2"></div>
+
+          <div class="pt-2 border-t border-base-border/10 flex justify-between items-center text-xs">
+            <span id="rewardGoalText" class="text-base-card/80 font-medium">Premio: -</span>
+            <span id="stampsCounterText" class="font-black text-primary-light">0/8</span>
+          </div>
+        </div>
+
+        <div id="sessionStampStatus" class="bg-primary-light border border-primary/20 rounded-xl p-3 text-xs text-primary-dark font-medium">
+          Haz un pedido en esta mesa para activar tu sello de hoy.
+        </div>
+
+        <button onclick="closeLoyaltyModal()" class="w-full bg-base-bg hover:bg-base-border/50 text-base-text font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-wider">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // CONFIGURACIÓN DE SUPABASE (SW&Go / QR&Go)
+    // ==========================================
+    const SUPABASE_URL = "https://admoytjzbhdngkcafhua.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_9KG1_KEF4Ik4SpmfTdEUqA_7vRD5Cq0";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let tableData = null;
+    let restaurantData = null;
+    let currentSessionId = null;
+    let products = [];
+    let cart = {};
+    let currentCategory = 'Entrantes';
+    let searchQuery = '';
+    let currentLang = 'es';
+    let customerPhone = localStorage.getItem('qrandgo_phone') || '';
+
+    let deviceFingerprint = localStorage.getItem('qrandgo_device_id');
+    if (!deviceFingerprint) {
+      deviceFingerprint = 'dev_' + crypto.randomUUID();
+      localStorage.setItem('qrandgo_device_id', deviceFingerprint);
+    }
+
+    function applyBrandTheme(hex) {
+      const cleanHex = /^#[0-9A-F]{6}$/i.test(hex || '') ? hex : '#12B89B';
+      const r = parseInt(cleanHex.slice(1, 3), 16);
+      const g = parseInt(cleanHex.slice(3, 5), 16);
+      const b = parseInt(cleanHex.slice(5, 7), 16);
+
+      const darkR = Math.max(0, Math.floor(r * 0.8));
+      const darkG = Math.max(0, Math.floor(g * 0.8));
+      const darkB = Math.max(0, Math.floor(b * 0.8));
+      const darkHex = `#${darkR.toString(16).padStart(2, '0')}${darkG.toString(16).padStart(2, '0')}${darkB.toString(16).padStart(2, '0')}`;
+
+      const lightR = Math.min(255, Math.floor(r + (255 - r) * 0.92));
+      const lightG = Math.min(255, Math.floor(g + (255 - g) * 0.92));
+      const lightB = Math.min(255, Math.floor(b + (255 - b) * 0.92));
+      const lightHex = `#${lightR.toString(16).padStart(2, '0')}${lightG.toString(16).padStart(2, '0')}${lightB.toString(16).padStart(2, '0')}`;
+
+      document.documentElement.style.setProperty('--brand-primary', cleanHex);
+      document.documentElement.style.setProperty('--brand-dark', darkHex);
+      document.documentElement.style.setProperty('--brand-light', lightHex);
+    }
+
+    const TRANSLATIONS = {
+      es: {
+        miCuenta: "Mi Cuenta", camarero: "Camarero", buscar: "Buscar platos...",
+        todos: "Todos", entrantes: "Entrantes", paraPicar: "Para picar",
+        arroces: "Arroces", carnes: "Carnes", pescados: "Pescados",
+        bebidas: "Bebidas", vinos: "Vinos", postres: "Postres",
+        cargando: "Cargando carta...", verComanda: "Ver Comanda",
+        enviarCocina: "Enviar a Preparación", anadir: "+ Añadir"
+      },
+      ca: {
+        miCuenta: "El Meu Compte", camarero: "Cambrer", buscar: "Cercar plats...",
+        todos: "Tots", entrantes: "Entrants", paraPicar: "Per picar",
+        arroces: "Arrossos", carnes: "Carns", pescados: "Peixos",
+        bebidas: "Begudes", vinos: "Vins", postres: "Postres",
+        cargando: "Carregant la carta...", verComanda: "Veure Comanda",
+        enviarCocina: "Enviar a Preparació", anadir: "+ Afegir"
+      },
+      en: {
+        miCuenta: "My Bill", camarero: "Waiter", buscar: "Search dishes...",
+        todos: "All", entrantes: "Starters", paraPicar: "Finger Food",
+        arroces: "Rice Dishes", carnes: "Meats", pescados: "Fish",
+        bebidas: "Drinks", vinos: "Wines", postres: "Desserts",
+        cargando: "Loading menu...", verComanda: "View Order",
+        enviarCocina: "Send to Kitchen", anadir: "+ Add"
+      },
+      fr: {
+        miCuenta: "Mon Addition", camarero: "Serveur", buscar: "Rechercher des plats...",
+        todos: "Tous", entrantes: "Entrées", paraPicar: "À grignoter",
+        arroces: "Riz", carnes: "Viandes", pescados: "Poissons",
+        bebidas: "Boissons", vinos: "Vins", postres: "Desserts",
+        cargando: "Chargement du menu...", verComanda: "Voir la commande",
+        enviarCocina: "Envoyer en préparation", anadir: "+ Ajouter"
+      },
+      it: {
+        miCuenta: "Il Mio Conto", camarero: "Cameriere", buscar: "Cerca piatti...",
+        todos: "Tutti", entrantes: "Antipasti", paraPicar: "Stuzzichini",
+        arroces: "Primi di Riso", carnes: "Carni", pescados: "Pesce",
+        bebidas: "Bevande", vinos: "Vini", postres: "Dolci",
+        cargando: "Caricamento del menu...", verComanda: "Vedi Ordine",
+        enviarCocina: "Invia in Preparazione", anadir: "+ Aggiungi"
+      }
+    };
+
+    // ==========================================
+    // 1. VALIDACIÓN DE MESA Y SEGURIDAD 30 MINUTOS
+    // ==========================================
+    function showLockScreen(title, message) {
+      document.body.innerHTML = `
+        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F9FAFB; padding: 20px; font-family: 'Plus Jakarta Sans', sans-serif; text-align: center;">
+          <div style="background: white; border: 1px solid #E5E7EB; border-radius: 24px; padding: 32px 24px; max-width: 360px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <p style="font-size: 40px; margin: 0 0 12px 0;">🔒</p>
+            <h2 style="font-size: 18px; font-weight: 800; color: #1F2937; margin: 0 0 8px 0;">${title}</h2>
+            <p style="font-size: 13px; color: #6B7280; margin: 0; line-height: 1.5;">${message}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    async function initApp() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const qrSlug = urlParams.get('qr') || urlParams.get('token');
+
+      if (!qrSlug) {
+        showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
+        return;
+      }
+
+      const { data, error } = await sb.rpc('validate_and_open_table', { p_qr_slug: qrSlug });
+
+      if (error || !data || !data.valid) {
+        showLockScreen("Mesa no verificada", "El código QR no es válido. Escanea de nuevo el código de tu mesa.");
+        return;
+      }
+
+      tableData = data;
+      restaurantData = data.restaurant;
+      currentSessionId = data.session_id;
+
+      // Aplicar color corporativo del restaurante
+      // Consultar el color actualizado directamente desde restaurants
+      const { data: brandRow } = await sb
+        .from('restaurants')
+        .select('primary_color')
+        .eq('id', restaurantData.id)
+        .single();
+
+      applyBrandTheme(brandRow?.primary_color || restaurantData.primary_color);
+
+      // Cambiar el color en vivo si el administrador lo modifica en el panel
+      sb.channel('brand-theme-' + restaurantData.id)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'restaurants',
+          filter: `id=eq.${restaurantData.id}`
+        }, (payload) => {
+          if (payload.new?.primary_color) {
+            applyBrandTheme(payload.new.primary_color);
+          }
+        })
+        .subscribe();
+
+      const storageTokenKey = `qrandgo_token_${tableData.table_id}`;
+      localStorage.setItem(storageTokenKey, tableData.active_token);
+
+      const numeroMesa = String(tableData.table_number).replace(/\D/g, '') || tableData.table_number;
+      document.getElementById('mesaNumberBox').innerText = numeroMesa;
+      document.getElementById('billMesaTitle').innerText = `${tableData.table_number} • Consumo activo`;
+      document.getElementById('loyaltyRestName').innerText = `Sellos • ${restaurantData.name}`;
+      document.title = `${restaurantData.name} - Carta Digital`;
+
+      await loadProducts();
+      if (customerPhone) {
+        await refreshLoyaltyUI();
+      }
+
+      subscribeToTableSecurity();
+    }
+
+    async function verifyActiveSessionBeforeAction() {
+      const { data, error } = await sb
+        .from('tables')
+        .select('active_token, token_expires_at, status')
+        .eq('id', tableData.table_id)
+        .single();
+
+      if (error || !data) return false;
+
+      const savedToken = localStorage.getItem(`qrandgo_token_${tableData.table_id}`);
+      const isExpired = new Date(data.token_expires_at) < new Date();
+      const tokenMismatch = data.active_token !== savedToken;
+
+      if (isExpired || tokenMismatch) {
+        showLockScreen(
+          "Sesión finalizada",
+          "La mesa ha sido cerrada o ha superado los 30 minutos de seguridad. Vuelve a escanear el QR de la mesa para abrir una nueva comanda."
+        );
+        return false;
+      }
+      return true;
+    }
+
+    function subscribeToTableSecurity() {
+      sb.channel('table-security-' + tableData.table_id)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tables',
+          filter: `id=eq.${tableData.table_id}`
+        }, (payload) => {
+          const updated = payload.new;
+          const savedToken = localStorage.getItem(`qrandgo_token_${tableData.table_id}`);
+          if (updated.active_token !== savedToken) {
+            if (customerPhone) refreshLoyaltyUI();
+            showLockScreen(
+              "Mesa cerrada",
+              "¡Gracias por tu visita! La cuenta de esta mesa se ha cerrado. Escanea el QR de nuevo si deseas iniciar otra comanda."
+            );
+          }
+        })
+        .subscribe();
+    }
+
+    // ==========================================
+    // 2. CARGA Y RENDERIZADO DE PRODUCTOS
+    // ==========================================
+    async function loadProducts() {
+      const { data, error } = await sb
+        .from('products')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('available', true);
+
+      if (error) {
+        document.getElementById('loading').innerText = 'No se pudo cargar la carta. Verifica la conexión.';
+        return;
+      }
+
+      products = data || [];
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('productList').classList.remove('hidden');
+      renderCurrentView();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val.trim().toLowerCase();
+      const clearBtn = document.getElementById('clearSearch');
+      if (searchQuery.length > 0) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+      renderCurrentView();
+    }
+
+    function clearSearchInput() {
+      document.getElementById('searchInput').value = '';
+      handleSearch('');
+    }
+
+    const HIDDEN_CATEGORIES = ['vinos'];
+
+    function renderCurrentView() {
+      let filtered = products.filter(p => {
+        const cat = (p.category || '').trim().toLowerCase();
+        return !HIDDEN_CATEGORIES.includes(cat);
+      });
+
+      if (currentCategory !== 'Todos') {
+        filtered = filtered.filter(p => {
+          const cat = (p.category || '').trim().toLowerCase();
+          return cat.includes(currentCategory.toLowerCase());
+        });
+      }
+
+      if (searchQuery) {
+        const langSuffix = currentLang !== 'es' ? `_${currentLang}` : '';
+        filtered = filtered.filter(p => {
+          const n = String(p[`name${langSuffix}`] || p.name || '').toLowerCase();
+          const d = String(p[`description${langSuffix}`] || p.description || '').toLowerCase();
+          const nEs = String(p.name || '').toLowerCase();
+          return n.includes(searchQuery) || d.includes(searchQuery) || nEs.includes(searchQuery);
+        });
+      }
+
+      renderProducts(filtered);
+    }
+
+    function renderProducts(list) {
+      const container = document.getElementById('productList');
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 text-base-muted">
+            <p class="text-2xl mb-1">🍃</p>
+            <p class="text-xs font-bold uppercase tracking-wider">No se encontraron productos</p>
+          </div>
+        `;
+        return;
+      }
+
+      const langSuffix = currentLang !== 'es' ? `_${currentLang}` : '';
+
+      container.innerHTML = list.map(p => {
+        const id = String(p.id);
+        const nombre = p[`name${langSuffix}`] || p.name || '';
+        const desc = p[`description${langSuffix}`] || p.description || '';
+        const precio = parseFloat(p.price || 0).toFixed(2);
+        const img = p.image_url;
+        const qty = cart[id] || 0;
+        const pt = parseInt(p.prep_time, 10) || 10;
+        const isDrink = (p.category || '').toLowerCase() === 'bebidas';
+
+        const timeTag = isDrink
+          ? ''
+          : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              pt >= 30
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : (pt >= 20
+                    ? 'bg-primary-light text-primary-dark border border-primary/20'
+                    : 'bg-base-bg text-base-muted border border-base-border')
+            }">${pt >= 30 ? '🥘 ~30 min' : (pt >= 20 ? '🍳 ~20 min' : '⚡ ~10 min')}</span>`;
+
+        return `
+          <div class="bg-base-card rounded-2xl p-3 flex gap-3.5 items-center border border-base-border shadow-sm hover:border-base-border/80 hover:shadow-md transition-all duration-200">
+            ${img ? `
+              <div class="relative overflow-hidden rounded-xl flex-shrink-0">
+                <img src="${img}" alt="${nombre}" class="w-20 h-20 object-cover bg-base-bg">
+              </div>
+            ` : ''}
+            
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-xs sm:text-sm text-base-text leading-snug line-clamp-2 tracking-tight">${nombre}</h3>
+              ${desc ? `<p class="text-[11px] text-base-muted truncate my-0.5 leading-relaxed">${desc}</p>` : ''}
+              <div class="flex items-center gap-2 mt-1">
+                <p class="font-black text-primary-dark text-xs sm:text-sm">${precio} €</p>
+                ${timeTag}
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${qty > 0 ? `
+                <button onclick="modifyQty('${id}', -1, event)" class="w-8 h-8 rounded-xl bg-base-bg text-base-text font-extrabold flex items-center justify-center text-sm hover:bg-base-border transition-all active:scale-90 shadow-sm">−</button>
+                <span class="text-xs font-black text-base-text w-5 text-center">${qty}</span>
+                <button onclick="modifyQty('${id}', 1, event)" class="w-8 h-8 rounded-xl bg-base-text text-base-card font-extrabold flex items-center justify-center text-sm hover:bg-black transition-all active:scale-90 shadow-md">+</button>
+              ` : `
+                <button onclick="modifyQty('${id}', 1, event)" class="bg-base-card hover:bg-primary hover:text-white text-base-text border border-base-border hover:border-primary font-bold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                  ${TRANSLATIONS[currentLang]?.anadir || '+ Añadir'}
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 3. CARRITO Y ENVÍO DE PEDIDOS A SUPABASE
+    // ==========================================
+    function triggerFlyAnimation(event) {
+      if (!event) return;
+      const dot = document.createElement('div');
+      dot.className = 'flying-dot';
+      dot.style.left = `${event.clientX - 7}px`;
+      dot.style.top = `${event.clientY - 7}px`;
+      document.body.appendChild(dot);
+
+      requestAnimationFrame(() => {
+        dot.style.transform = `translate(${(window.innerWidth / 2) - event.clientX}px, ${(window.innerHeight - 30) - event.clientY}px) scale(0.3)`;
+        dot.style.opacity = '0';
+      });
+      setTimeout(() => dot.remove(), 600);
+    }
+
+    function bumpCartBar() {
+      const bar = document.getElementById('cartBar');
+      bar.classList.remove('cart-bump');
+      void bar.offsetWidth;
+      bar.classList.add('cart-bump');
+    }
+
+    function modifyQty(id, delta, event) {
+      const next = (cart[id] || 0) + delta;
+      if (delta > 0 && event) triggerFlyAnimation(event);
+      if (next > 0) cart[id] = next;
+      else delete cart[id];
+
+      updateCartUI();
+      bumpCartBar();
+      renderCurrentView();
+      if (!document.getElementById('orderModal').classList.contains('hidden')) renderModalList();
+    }
+
+    function deleteItem(id) {
+      delete cart[id];
+      updateCartUI();
+      bumpCartBar();
+      renderCurrentView();
+      renderModalList();
+    }
+
+    function updateCartUI() {
+      let count = 0, total = 0;
+      Object.keys(cart).forEach(id => {
+        const item = products.find(p => String(p.id) === id);
+        if (item) {
+          count += cart[id];
+          total += cart[id] * parseFloat(item.price || 0);
+        }
+      });
+      const bar = document.getElementById('cartBar');
+      if (count > 0) {
+        bar.classList.remove('hidden');
+        document.getElementById('cartCount').innerText = `${count} producto${count > 1 ? 's' : ''}`;
+        document.getElementById('cartTotal').innerText = `${total.toFixed(2)} €`;
+      } else {
+        bar.classList.add('hidden');
+        closeModal();
+      }
+    }
+
+    async function estimateOrderTime() {
+      const activeKeys = Object.keys(cart);
+      if (activeKeys.length === 0) return null;
+
+      let maxDishTime = 5;
+      let hasFood = false;
+
+      activeKeys.forEach(id => {
+        const p = products.find(prod => String(prod.id) === id);
+        if (!p) return;
+        const isDrink = (p.category || '').toLowerCase() === 'bebidas';
+        if (!isDrink) {
+          hasFood = true;
+          const pt = parseInt(p.prep_time, 10) || 10;
+          if (pt > maxDishTime) maxDishTime = pt;
+        }
+      });
+
+      if (!hasFood) return { min: 3, max: 5, level: 'fast', queueCount: 0 };
+
+      const { count } = await sb
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurantData.id)
+        .eq('is_waiter_call', false)
+        .neq('kitchen_status', 'ready');
+
+      const activeQueue = count || 0;
+      const queueDelay = Math.min(15, activeQueue * 2);
+      const totalMin = maxDishTime + queueDelay;
+
+      let level = 'fast';
+      if (totalMin > 22) level = 'slow';
+      else if (totalMin > 12) level = 'medium';
+
+      return { min: totalMin, max: totalMin + 5, level, queueCount: activeQueue };
+    }
+
+    async function renderModalList() {
+      const list = document.getElementById('modalItems');
+      const activeKeys = Object.keys(cart);
+      if (activeKeys.length === 0) { closeModal(); return; }
+
+      const itemsHtml = activeKeys.map(id => {
+        const p = products.find(prod => String(prod.id) === id);
+        const precio = parseFloat(p ? p.price : 0);
+        const pt = parseInt(p?.prep_time, 10) || 10;
+        const isDrink = (p?.category || '').toLowerCase() === 'bebidas';
+        return `
+          <div class="py-2.5 flex justify-between items-center gap-2">
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-xs sm:text-sm text-base-text truncate">
+                ${p ? p.name : id}
+                ${!isDrink ? `<span class="text-[10px] text-base-muted font-normal ml-1">(~${pt}m)</span>` : ''}
+              </p>
+              <p class="text-xs text-primary-dark font-black">${(cart[id] * precio).toFixed(2)} €</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="modifyQty('${id}', -1, event)" class="w-7 h-7 rounded-lg bg-base-bg text-base-text font-extrabold flex items-center justify-center hover:bg-base-border">−</button>
+              <span class="text-xs font-bold text-base-text w-4 text-center">${cart[id]}</span>
+              <button onclick="modifyQty('${id}', 1, event)" class="w-7 h-7 rounded-lg bg-base-text text-base-card font-extrabold flex items-center justify-center hover:bg-black">+</button>
+              <button onclick="deleteItem('${id}')" title="Eliminar" class="ml-1 text-xs text-base-muted hover:text-red-600 p-1 font-bold">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      list.innerHTML = itemsHtml + `
+        <div id="estimatedTimeBox" class="mt-3 p-3 rounded-2xl bg-base-bg border border-base-border text-xs text-base-muted font-medium">
+          Calculando tiempo estimado de cocina...
+        </div>
+      `;
+
+      const est = await estimateOrderTime();
+      const box = document.getElementById('estimatedTimeBox');
+      if (!box || !est) return;
+
+      if (est.level === 'slow') {
+        box.className = "mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between";
+        box.innerHTML = `
+          <div>
+            <p class="font-extrabold">🥘 Elaboración lenta (${est.min}–${est.max} min aprox.)</p>
+            <p class="text-[11px] opacity-80 mt-0.5">Incluye platos preparados al momento${est.queueCount > 0 ? ` · ${est.queueCount} comandas en curso` : ''}.</p>
+          </div>
+        `;
+      } else if (est.level === 'medium') {
+        box.className = "mt-3 p-3 rounded-2xl bg-primary-light border border-primary/20 text-xs text-primary-dark flex items-center justify-between";
+        box.innerHTML = `
+          <div>
+            <p class="font-extrabold">🍳 Tiempo medio (${est.min}–${est.max} min aprox.)</p>
+            <p class="text-[11px] opacity-80 mt-0.5">Preparación estándar${est.queueCount > 0 ? ` · ${est.queueCount} comandas en curso` : ''}.</p>
+          </div>
+        `;
+      } else {
+        box.className = "mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between";
+        box.innerHTML = `
+          <div>
+            <p class="font-extrabold">⚡ Servicio rápido (${est.min}–${est.max} min aprox.)</p>
+            <p class="text-[11px] opacity-80 mt-0.5">Platos ágiles de salida rápida.</p>
+          </div>
+        `;
+      }
+    }
+
+    function openModal() {
+      renderModalList();
+      document.getElementById('orderModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('orderModal').classList.add('hidden');
+    }
+
+    async function ensureTableSession() {
+      const { data: openSessions } = await sb
+        .from('table_sessions')
+        .select('id')
+        .eq('table_id', tableData.table_id)
+        .eq('status', 'open')
+        .limit(1);
+
+      if (openSessions && openSessions.length > 0) {
+        currentSessionId = openSessions[0].id;
+      } else {
+        const { data: newSession, error } = await sb
+          .from('table_sessions')
+          .insert({
+            restaurant_id: restaurantData.id,
+            table_id: tableData.table_id,
+            status: 'open'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        currentSessionId = newSession.id;
+      }
+
+      await sb.from('tables').update({
+        status: 'occupied',
+        token_expires_at: new Date(Date.now() + 30 * 60000).toISOString()
+      }).eq('id', tableData.table_id);
+
+      if (customerPhone) {
+        await registerSessionStamp();
+      }
+
+      return currentSessionId;
+    }
+
+    async function submitOrder() {
+      const valid = await verifyActiveSessionBeforeAction();
+      if (!valid) return;
+
+      const btn = document.getElementById('sendBtn');
+      btn.disabled = true;
+      btn.innerText = 'Enviando comanda...';
+
+      try {
+        const sessionId = await ensureTableSession();
+
+        const itemsArray = Object.keys(cart).map(id => {
+          const p = products.find(prod => String(prod.id) === id);
+          return {
+            product_id: id,
+            name: p ? p.name : id,
+            category: p ? (p.category || 'General') : 'General',
+            qty: cart[id],
+            price: p ? parseFloat(p.price) : 0
+          };
+        });
+
+        const total = itemsArray.reduce((sum, item) => sum + (item.qty * item.price), 0);
+
+        const { error } = await sb.from('orders').insert({
+          restaurant_id: restaurantData.id,
+          session_id: sessionId,
+          table_number: tableData.table_number,
+          items: itemsArray,
+          total_amount: total.toFixed(2),
+          notes: document.getElementById('orderNotes').value.trim(),
+          kitchen_status: 'pending',
+          bar_status: 'pending',
+          is_waiter_call: false
+        });
+
+        if (error) throw error;
+
+        cart = {};
+        document.getElementById('orderNotes').value = '';
+        updateCartUI();
+        renderCurrentView();
+        closeModal();
+        alert('¡Comanda enviada a preparación con éxito!');
+      } catch (err) {
+        console.error(err);
+        alert('Hubo un error al enviar el pedido. Por favor, reinténtalo.');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = TRANSLATIONS[currentLang]?.enviarCocina || 'Enviar a Preparación';
+      }
+    }
+
+    async function callWaiter() {
+      const valid = await verifyActiveSessionBeforeAction();
+      if (!valid) return;
+
+      const btn = document.getElementById('callWaiterHeaderBtn');
+      if (btn && btn.dataset.calling === "true") return;
+
+      if (!confirm(`¿Deseas llamar al camarero a la ${tableData.table_number}?`)) return;
+
+      if (btn) {
+        btn.dataset.calling = "true";
+        btn.innerText = "⏳";
+      }
+
+      try {
+        const sessionId = await ensureTableSession();
+        const { error } = await sb.from('orders').insert({
+          restaurant_id: restaurantData.id,
+          session_id: sessionId,
+          table_number: tableData.table_number,
+          items: [{ name: '🔔 LLAMADA AL CAMARERO', category: 'Bebidas', qty: 1, price: 0 }],
+          total_amount: 0,
+          is_waiter_call: true,
+          bar_status: 'pending'
+        });
+
+        if (error) throw error;
+
+        if (btn) btn.innerText = "✅";
+        alert(`¡Aviso enviado a la barra! Un camarero acudirá a la ${tableData.table_number}.`);
+        setTimeout(() => {
+          if (btn) {
+            btn.innerText = "🔔";
+            btn.dataset.calling = "false";
+          }
+        }, 8000);
+      } catch (err) {
+        if (btn) {
+          btn.innerText = "🔔";
+          btn.dataset.calling = "false";
+        }
+        alert('No se pudo enviar el aviso. Inténtalo de nuevo.');
+      }
+    }
+
+    // ==========================================
+    // 4. CUENTA ACUMULADA EN TIEMPO REAL
+    // ==========================================
+    let billRealtimeChannel = null;
+
+    async function refreshBillData() {
+      const content = document.getElementById('billContent');
+      const totalDisplay = document.getElementById('billGrandTotal');
+
+      const { data: openSessions } = await sb
+        .from('table_sessions')
+        .select('id')
+        .eq('table_id', tableData.table_id)
+        .eq('status', 'open')
+        .limit(1);
+
+      const activeSessId = openSessions && openSessions.length > 0 ? openSessions[0].id : null;
+
+      if (!activeSessId) {
+        content.innerHTML = `
+          <div class="text-center py-8 text-base-muted">
+            <p class="text-3xl mb-1">🌿</p>
+            <p class="font-bold text-base-text text-xs uppercase tracking-wider">No hay consumos pendientes</p>
+            <p class="text-[11px] mt-1">Los pedidos que hagas desde la mesa se irán sumando aquí.</p>
+          </div>
+        `;
+        totalDisplay.innerText = '0.00 €';
+        return;
+      }
+
+      const { data: orders, error } = await sb
+        .from('orders')
+        .select('*')
+        .eq('session_id', activeSessId)
+        .order('created_at', { ascending: true });
+
+      if (error || !orders || orders.length === 0) {
+        content.innerHTML = `<p class="text-center py-6 text-base-muted text-xs">No hay consumos pendientes.</p>`;
+        totalDisplay.innerText = '0.00 €';
+        return;
+      }
+
+      let grandTotal = 0;
+      content.innerHTML = orders.map((ord, idx) => {
+        const ordTotal = parseFloat(ord.total_amount || 0);
+        grandTotal += ordTotal;
+        const hora = new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        let badgeHtml = '';
+        if (ord.is_waiter_call) {
+          badgeHtml = ord.bar_status === 'ready'
+            ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">✓ Atendido</span>`
+            : `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">⏳ Avisado...</span>`;
+        } else {
+          const items = ord.items || [];
+          const hasDrinks = items.some(i => (i.category || '').toLowerCase() === 'bebidas');
+          const hasFood = items.some(i => (i.category || '').toLowerCase() !== 'bebidas');
+          const barDone = !hasDrinks || ord.bar_status === 'ready';
+          const kitchenDone = !hasFood || ord.kitchen_status === 'ready';
+
+          if (barDone && kitchenDone) {
+            badgeHtml = `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">✓ Entregado</span>`;
+          } else if (ord.kitchen_status === 'preparing' || ord.bar_status === 'preparing') {
+            badgeHtml = `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 animate-pulse">👨‍🍳 En preparación...</span>`;
+          } else {
+            badgeHtml = `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-stone-200 text-base-muted/80">⏳ Pendiente...</span>`;
+          }
+        }
+
+        return `
+          <div class="bg-base-bg border border-base-border rounded-2xl p-3.5 shadow-inner space-y-2">
+            <div class="flex justify-between items-center border-b border-base-border pb-2">
+              <span class="text-xs font-bold text-base-text">Ronda #${idx + 1} (${hora})</span>
+              <div class="flex items-center gap-2">
+                ${badgeHtml}
+                <span class="text-xs font-black text-primary-dark">${ordTotal.toFixed(2)} €</span>
+              </div>
+            </div>
+            <ul class="text-[11px] text-base-muted space-y-1">
+              ${(ord.items || []).map(i => `<li>• ${i.qty}x ${i.name}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }).join('');
+
+      totalDisplay.innerText = `${grandTotal.toFixed(2)} €`;
+    }
+
+    function openBillModal() {
+      document.getElementById('billModal').classList.remove('hidden');
+      refreshBillData();
+
+      if (billRealtimeChannel) sb.removeChannel(billRealtimeChannel);
+      billRealtimeChannel = sb.channel('bill-orders-' + tableData.table_id)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+          refreshBillData();
+        })
+        .subscribe();
+    }
+
+    function closeBillModal() {
+      document.getElementById('billModal').classList.add('hidden');
+      if (billRealtimeChannel) {
+        sb.removeChannel(billRealtimeChannel);
+        billRealtimeChannel = null;
+      }
+    }
+
+    // ==========================================
+    // 5. TARJETA DE FIDELIZACIÓN
+    // ==========================================
+    async function saveCustomerPhone() {
+      const rawPhone = document.getElementById('loyaltyPhoneInput').value.replace(/\s+/g, '').trim();
+      if (rawPhone.length < 6) {
+        alert("Introduce un número de teléfono válido.");
+        return;
+      }
+
+      customerPhone = rawPhone;
+      localStorage.setItem('qrandgo_phone', customerPhone);
+
+      await registerSessionStamp();
+      await refreshLoyaltyUI();
+    }
+
+    async function registerSessionStamp() {
+      if (!customerPhone || !restaurantData) return;
+
+      const { data: openSessions } = await sb
+        .from('table_sessions')
+        .select('id')
+        .eq('table_id', tableData.table_id)
+        .eq('status', 'open')
+        .limit(1);
+
+      if (!openSessions || openSessions.length === 0) return;
+      const sessId = openSessions[0].id;
+
+      await sb.from('session_stamps').upsert({
+        session_id: sessId,
+        restaurant_id: restaurantData.id,
+        phone_number: customerPhone,
+        device_fingerprint: deviceFingerprint,
+        confirmed: false
+      }, { onConflict: 'session_id,phone_number', ignoreDuplicates: true });
+    }
+
+    async function refreshLoyaltyUI() {
+      if (!customerPhone) {
+        document.getElementById('loyaltyPhoneForm').classList.remove('hidden');
+        document.getElementById('loyaltyCardView').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('loyaltyPhoneForm').classList.add('hidden');
+      document.getElementById('loyaltyCardView').classList.remove('hidden');
+      document.getElementById('cardPhoneDisplay').innerText = customerPhone;
+
+      const { data: card } = await sb
+        .from('loyalty_cards')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('phone_number', customerPhone)
+        .maybeSingle();
+
+      const currentStamps = card ? card.stamps_count : 0;
+      const required = restaurantData.stamps_required || 8;
+
+      document.getElementById('headerStampBadge').innerText = `${currentStamps}/${required}`;
+      document.getElementById('stampsCounterText').innerText = `${currentStamps}/${required}`;
+      document.getElementById('rewardGoalText').innerText = `Premio: ${restaurantData.reward_description}`;
+      document.getElementById('loyaltyBannerText').innerText =
+        currentStamps >= required
+          ? `🎉 ¡Tienes un premio listo para canjear en barra!`
+          : `Llevas ${currentStamps} de ${required} sellos • ${restaurantData.reward_description}`;
+
+      const grid = document.getElementById('stampsGrid');
+      let boxesHtml = '';
+      for (let i = 1; i <= required; i++) {
+        const earned = i <= currentStamps;
+        boxesHtml += `
+          <div class="h-12 rounded-xl flex items-center justify-center font-black text-sm border ${
+            earned
+              ? 'bg-primary border-primary text-white shadow-md'
+              : 'bg-base-card/5 border-base-card/15 text-base-card/30'
+          }">
+            ${earned ? '★' : i}
+          </div>
+        `;
+      }
+      grid.innerHTML = boxesHtml;
+
+      const { data: openSessions } = await sb
+        .from('table_sessions')
+        .select('id')
+        .eq('table_id', tableData.table_id)
+        .eq('status', 'open')
+        .limit(1);
+
+      const statusBox = document.getElementById('sessionStampStatus');
+      if (openSessions && openSessions.length > 0) {
+        const { data: pendingStamp } = await sb
+          .from('session_stamps')
+          .select('id')
+          .eq('session_id', openSessions[0].id)
+          .eq('phone_number', customerPhone)
+          .maybeSingle();
+
+        if (pendingStamp) {
+          statusBox.className = "bg-primary-light border border-primary/20 rounded-xl p-3 text-xs text-primary-dark font-medium";
+          statusBox.innerText = "✅ Sello de esta visita activado. Se sumará automáticamente cuando el camarero cierre la mesa.";
+        } else {
+          statusBox.className = "bg-base-bg border border-base-border rounded-xl p-3 text-xs text-base-muted font-medium";
+          statusBox.innerText = "Haz un pedido en esta mesa para activar tu sello de hoy.";
+        }
+      }
+    }
+
+    function openLoyaltyModal() {
+      document.getElementById('loyaltyModal').classList.remove('hidden');
+      refreshLoyaltyUI();
+    }
+
+    function closeLoyaltyModal() {
+      document.getElementById('loyaltyModal').classList.add('hidden');
+    }
+
+    // ==========================================
+    // 6. IDIOMAS Y FILTROS DE CATEGORÍA
+    // ==========================================
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.es;
+
+      const elMiCuenta = document.getElementById('txt-mi-cuenta');
+      if (elMiCuenta) elMiCuenta.innerText = t.miCuenta;
+
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) searchInput.placeholder = t.buscar;
+
+      updateCategoryButtonsText();
+
+      const orderBtn = document.getElementById('txt-ver-comanda');
+      if (orderBtn) orderBtn.innerText = t.verComanda;
+
+      const sendBtn = document.getElementById('sendBtn');
+      if (sendBtn && !sendBtn.disabled) sendBtn.innerText = t.enviarCocina;
+
+      renderCurrentView();
+    }
+
+    const CATEGORY_MAP = ['Todos', 'Entrantes', 'Para picar', 'Arroces', 'Carnes', 'Pescados', 'Bebidas', 'Vinos', 'Postres'];
+
+    function filterCategory(cat) {
+      currentCategory = cat;
+      const buttons = document.querySelectorAll('#categoriesBar .cat-btn');
+      buttons.forEach((btn, index) => {
+        const isSelected = CATEGORY_MAP[index] === cat;
+        if (isSelected) {
+          btn.className = "cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-text text-base-card shadow-md transition-all flex-shrink-0 active:scale-95";
+        } else {
+          btn.className = "cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95 hover:bg-base-bg";
+        }
+      });
+      renderCurrentView();
+    }
+
+    function updateCategoryButtonsText() {
+      const t = TRANSLATIONS[currentLang] || TRANSLATIONS.es;
+      const buttons = document.querySelectorAll('#categoriesBar .cat-btn');
+      const categoryKeys = ['todos', 'entrantes', 'paraPicar', 'arroces', 'carnes', 'pescados', 'bebidas', 'vinos', 'postres'];
+      buttons.forEach((btn, index) => {
+        if (categoryKeys[index] && t[categoryKeys[index]]) btn.innerText = t[categoryKeys[index]];
+      });
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
