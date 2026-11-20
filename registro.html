@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Nuevo Restaurante - SW&Go</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#12B89B',
+              dark: '#0E937C',
+              light: '#EDFBF8',
+            },
+            base: {
+              bg: '#F9FAFB',
+              card: '#FFFFFF',
+              border: '#E5E7EB',
+              text: '#1F2937',
+              muted: '#6B7280',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .font-serif-title { font-family: 'Playfair Display', serif; }
+  </style>
+</head>
+<body class="bg-base-bg text-base-text min-h-screen flex items-center justify-center p-4 font-sans">
+
+  <div class="bg-base-card border border-base-border rounded-3xl p-8 w-full max-w-md shadow-sm space-y-6">
+    <div class="text-center space-y-1.5">
+      <div class="w-12 h-12 rounded-2xl bg-base-text text-base-card flex items-center justify-center text-xl mx-auto shadow-xs">
+        🚀
+      </div>
+      <h1 class="font-serif-title text-2xl font-bold text-base-text">Registra tu Local</h1>
+      <p class="text-xs text-base-muted">Crea tu carta digital y panel de gestión en segundos</p>
+    </div>
+
+    <form onsubmit="handleRegister(event)" class="space-y-4">
+      <div>
+        <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Nombre del Restaurante</label>
+        <input type="text" id="restName" required placeholder="Ej. La Tasca del Puerto" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Identificador único (Slug sin espacios)</label>
+        <input type="text" id="restSlug" required placeholder="ej. tasca-puerto" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Número de Mesas</label>
+          <input type="number" id="restTables" min="1" max="100" value="10" required class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Correo de Acceso</label>
+          <input type="email" id="restEmail" required placeholder="dueno@local.com" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Contraseña para el Panel</label>
+        <input type="password" id="restPassword" required placeholder="••••••••" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+      </div>
+
+      <p id="formError" class="hidden text-xs text-red-600 font-bold text-center"></p>
+      <p id="formSuccess" class="hidden text-xs text-emerald-600 font-bold text-center"></p>
+
+      <button type="submit" id="submitBtn" class="w-full bg-primary hover:bg-primary-dark text-white font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 shadow-xs">
+        Crear mi Carta y Panel
+      </button>
+    </form>
+
+    <div class="text-center pt-2 border-t border-base-border">
+      <a href="panel.html" class="text-xs font-bold text-base-muted hover:text-base-text transition-colors">
+        ¿Ya tienes cuenta? Inicia sesión aquí →
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://admoytjzbhdngkcafhua.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_9KG1_KEF4Ik4SpmfTdEUqA_7vRD5Cq0";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Auto-generar slug mientras escriben el nombre
+    document.getElementById('restName').addEventListener('input', (e) => {
+      const slugVal = e.target.value
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      document.getElementById('restSlug').value = slugVal;
+    });
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('restName').value.trim();
+      const slug = document.getElementById('restSlug').value.trim().toLowerCase();
+      const totalTables = parseInt(document.getElementById('restTables').value, 10);
+      const email = document.getElementById('restEmail').value.trim();
+      const password = document.getElementById('restPassword').value;
+
+      const errEl = document.getElementById('formError');
+      const succEl = document.getElementById('formSuccess');
+      const btn = document.getElementById('submitBtn');
+
+      errEl.classList.add('hidden');
+      succEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerText = "Registrando restaurante...";
+
+      try {
+        // Llamar a la función RPC que creamos en Supabase
+        const { data, error } = await sb.rpc('register_new_restaurant', {
+          p_email: email,
+          p_password: password,
+          p_name: name,
+          p_slug: slug,
+          p_total_tables: totalTables
+        });
+
+        if (error) throw error;
+
+        succEl.innerText = "¡Restaurante registrado con éxito! Redirigiendo al panel...";
+        succEl.classList.remove('hidden');
+
+        // Iniciar sesión automáticamente con el nuevo usuario
+        await sb.auth.signInWithPassword({ email, password });
+
+        setTimeout(() => {
+          window.location.href = 'panel.html';
+        }, 1500);
+
+      } catch (err) {
+        errEl.innerText = "Error: " + (err.message || "El slug o el correo ya están en uso.");
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = "Crear mi Carta y Panel";
+      }
+    }
+  </script>
+</body>
+</html>
