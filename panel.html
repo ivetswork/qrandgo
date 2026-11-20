@@ -15,9 +15,9 @@
         extend: {
           colors: {
             primary: {
-              DEFAULT: 'var(--brand-primary, #06B6D4)',
-              dark: 'var(--brand-dark, #0891B2)',
-              light: 'var(--brand-light, #ECFEFF)',
+              DEFAULT: 'var(--brand-primary, #12B89B)',
+              dark: 'var(--brand-dark, #0E937C)',
+              light: 'var(--brand-light, #EDFBF8)',
             },
             base: {
               bg: '#F9FAFB',
@@ -42,261 +42,295 @@
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-base-bg text-base-text min-h-screen p-4 sm:p-6 font-sans">
+<body class="bg-base-bg text-base-text min-h-screen font-sans">
 
-  <!-- Header Centralizado -->
-  <header class="pb-4 border-b border-base-border mb-6 space-y-4">
-    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-11 h-11 rounded-2xl bg-base-text text-base-card flex items-center justify-center text-xl shadow-xs">
-          📋
+  <!-- PANTALLA DE LOGIN (Visible si no hay sesión iniciada) -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-base-card border border-base-border rounded-3xl p-8 w-full max-w-sm shadow-sm space-y-6">
+      <div class="text-center space-y-1.5">
+        <div class="w-12 h-12 rounded-2xl bg-base-text text-base-card flex items-center justify-center text-xl mx-auto shadow-xs">
+          🔒
         </div>
+        <h1 class="font-serif-title text-2xl font-bold text-base-text">Acceso al Panel</h1>
+        <p class="text-xs text-base-muted">Inicia sesión con la cuenta de tu restaurante</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="space-y-4">
         <div>
-          <h1 id="panelTitle" class="font-serif-title text-2xl font-bold text-base-text tracking-tight">Panel QR&Go</h1>
-          <p class="text-xs text-base-muted font-semibold flex items-center gap-1.5 mt-0.5">
-            <span id="realtimeDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="realtimeStatus">En vivo</span>
-          </p>
+          <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Correo electrónico</label>
+          <input type="email" id="loginEmail" required placeholder="tu@restaurante.com" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
         </div>
-      </div>
 
-      <!-- Selector de Vistas -->
-      <div class="flex flex-wrap items-center gap-1 bg-base-card border border-base-border p-1 rounded-2xl text-xs font-bold w-full lg:w-auto justify-center">
-        <button onclick="switchView('cocina')" id="tab-cocina" class="px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5">
-          <span>👨‍🍳 Cocina</span>
-          <span id="badgeCocina" class="bg-primary text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
-        </button>
-        <button onclick="switchView('barra')" id="tab-barra" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-          <span>🍸 Barra</span>
-          <span id="badgeBarra" class="bg-primary text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
-        </button>
-        <button onclick="switchView('caja')" id="tab-caja" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-          <span>💳 Caja & Mesas</span>
-          <span id="badgeCaja" class="bg-base-text text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
-        </button>
-        <button onclick="switchView('carta')" id="tab-carta" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-          <span>🍽️ Carta</span>
-        </button>
-        <button onclick="switchView('fidelizacion')" id="tab-fidelizacion" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-          <span>🎟️ Sellos</span>
-        </button>
-        <button onclick="switchView('ajustes')" id="tab-ajustes" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-          <span>⚙️ Mesas & Local</span>
-        </button>
-      </div>
+        <div>
+          <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+        </div>
 
-      <div class="text-right hidden lg:block">
-        <p id="clock" class="text-lg font-mono font-extrabold text-base-text">00:00:00</p>
-        <p id="activeOrdersCount" class="text-[11px] font-bold text-primary-dark uppercase tracking-wider">0 comandas activas</p>
-      </div>
+        <p id="loginError" class="hidden text-xs text-red-600 font-bold text-center"></p>
+
+        <button type="submit" id="loginBtn" class="w-full bg-base-text hover:bg-black text-base-card font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95">
+          Entrar al Panel
+        </button>
+      </form>
     </div>
+  </div>
 
-    <!-- Barra de Filtro Rápido de Mesas -->
-    <div id="tableFilterBar" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-      <span class="text-base-muted font-bold whitespace-nowrap text-[11px] uppercase tracking-wider">Mesas:</span>
-      <button onclick="setTableFilter('all', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card border border-base-text transition-all">Todas</button>
-      <button onclick="setTableFilter('1-10', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">1-10</button>
-      <button onclick="setTableFilter('11-20', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">11-20</button>
-      <button onclick="setTableFilter('21-30', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">21-30</button>
-      <button onclick="setTableFilter('31-40', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">31-40</button>
-      <button onclick="setTableFilter('41-50', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">41-50</button>
-    </div>
-  </header>
-
-  <!-- CONTENEDOR PRINCIPAL -->
-  <main>
-    <!-- VISTA 1: COCINA -->
-    <div id="view-cocina">
-      <div id="gridCocina" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando comandas de cocina...</div>
-      </div>
-    </div>
-
-    <!-- VISTA 2: BARRA -->
-    <div id="view-barra" class="hidden">
-      <div id="gridBarra" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando rondas de barra...</div>
-      </div>
-    </div>
-
-    <!-- VISTA 3: CAJA & MESAS -->
-    <div id="view-caja" class="hidden">
-      <div id="gridCaja" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Consultando cuentas de mesas...</div>
-      </div>
-    </div>
-
-    <!-- VISTA 4: GESTOR DE CARTA -->
-    <div id="view-carta" class="hidden max-w-5xl mx-auto space-y-5">
-      <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-base-border pb-3">
+  <!-- APLICACIÓN PRINCIPAL (Oculta hasta iniciar sesión) -->
+  <div id="appContainer" class="hidden p-4 sm:p-6">
+    <!-- Header Centralizado -->
+    <header class="pb-4 border-b border-base-border mb-6 space-y-4">
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-base-text text-base-card flex items-center justify-center text-xl shadow-xs">
+            📋
+          </div>
           <div>
-            <h2 class="font-serif-title text-xl font-bold text-base-text">Añadir Producto a la Carta</h2>
-            <p class="text-xs text-base-muted">Los cambios se reflejan al instante en los móviles de los clientes.</p>
-          </div>
-          <span id="totalProductsBadge" class="text-xs font-extrabold px-3 py-1 rounded-xl bg-primary-light text-primary-dark border border-primary/20">
-            0 platos
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-          <div class="sm:col-span-3">
-            <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Categoría</label>
-            <select id="newProdCat" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
-              <option value="Entrantes">Entrantes</option>
-              <option value="Para picar">Para picar</option>
-              <option value="Arroces">Arroces</option>
-              <option value="Carnes">Carnes</option>
-              <option value="Pescados">Pescados</option>
-              <option value="Bebidas">Bebidas</option>
-              <option value="Postres">Postres</option>
-              <option value="Vinos">Vinos</option>
-            </select>
-          </div>
-
-          <div class="sm:col-span-3">
-            <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Nombre del plato / bebida *</label>
-            <input type="text" id="newProdName" placeholder="Ej. Croquetas de Boletus" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
-          </div>
-
-          <div class="sm:col-span-2">
-            <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Descripción (opcional)</label>
-            <input type="text" id="newProdDesc" placeholder="Ej. 6 unidades" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-medium text-base-text outline-none focus:border-primary">
-          </div>
-
-          <div class="sm:col-span-2">
-            <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Precio (€) *</label>
-            <input type="number" id="newProdPrice" step="0.10" min="0" placeholder="9.50" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-black text-base-text outline-none focus:border-primary">
-          </div>
-
-          <div class="sm:col-span-2">
-            <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Tiempo</label>
-            <select id="newProdTime" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
-              <option value="10">⚡ ~10 min</option>
-              <option value="20">🍳 ~20 min</option>
-              <option value="30">🥘 ~30 min</option>
-            </select>
+            <h1 id="panelTitle" class="font-serif-title text-2xl font-bold text-base-text tracking-tight">Panel QR&Go</h1>
+            <p class="text-xs text-base-muted font-semibold flex items-center gap-1.5 mt-0.5">
+              <span id="realtimeDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="realtimeStatus">En vivo</span>
+            </p>
           </div>
         </div>
 
-        <div class="flex justify-end">
-          <button id="addProdBtn" onclick="createProduct()" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all active:scale-95 uppercase tracking-wider">
-            + Añadir a la Carta
+        <!-- Selector de Vistas -->
+        <div class="flex flex-wrap items-center gap-1 bg-base-card border border-base-border p-1 rounded-2xl text-xs font-bold w-full lg:w-auto justify-center">
+          <button onclick="switchView('cocina')" id="tab-cocina" class="px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5">
+            <span>👨‍🍳 Cocina</span>
+            <span id="badgeCocina" class="bg-primary text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+          <button onclick="switchView('barra')" id="tab-barra" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+            <span>🍸 Barra</span>
+            <span id="badgeBarra" class="bg-primary text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+          <button onclick="switchView('caja')" id="tab-caja" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+            <span>💳 Caja & Mesas</span>
+            <span id="badgeCaja" class="bg-base-text text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+          <button onclick="switchView('carta')" id="tab-carta" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+            <span>🍽️ Carta</span>
+          </button>
+          <button onclick="switchView('fidelizacion')" id="tab-fidelizacion" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+            <span>🎟️ Sellos</span>
+          </button>
+          <button onclick="switchView('ajustes')" id="tab-ajustes" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+            <span>⚙️ Mesas & Local</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3 self-end lg:self-center">
+          <div class="text-right hidden lg:block">
+            <p id="clock" class="text-lg font-mono font-extrabold text-base-text">00:00:00</p>
+            <p id="activeOrdersCount" class="text-[11px] font-bold text-primary-dark uppercase tracking-wider">0 comandas activas</p>
+          </div>
+          <button onclick="handleLogout()" title="Cerrar sesión" class="bg-base-card hover:bg-red-50 text-base-muted hover:text-red-600 border border-base-border px-3 py-2 rounded-xl text-xs font-bold transition-all">
+            Salir
           </button>
         </div>
       </div>
 
-      <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs w-full sm:w-auto">
-            <button onclick="setMenuCatFilter('Todas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card transition-all">Todas</button>
-            <button onclick="setMenuCatFilter('Entrantes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Entrantes</button>
-            <button onclick="setMenuCatFilter('Para picar', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Para picar</button>
-            <button onclick="setMenuCatFilter('Arroces', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Arroces</button>
-            <button onclick="setMenuCatFilter('Carnes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Carnes</button>
-            <button onclick="setMenuCatFilter('Pescados', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Pescados</button>
-            <button onclick="setMenuCatFilter('Bebidas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Bebidas</button>
-            <button onclick="setMenuCatFilter('Postres', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Postres</button>
-          </div>
+      <!-- Barra de Filtro Rápido de Mesas -->
+      <div id="tableFilterBar" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <span class="text-base-muted font-bold whitespace-nowrap text-[11px] uppercase tracking-wider">Mesas:</span>
+        <button onclick="setTableFilter('all', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card border border-base-text transition-all">Todas</button>
+        <button onclick="setTableFilter('1-10', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">1-10</button>
+        <button onclick="setTableFilter('11-20', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">11-20</button>
+        <button onclick="setTableFilter('21-30', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">21-30</button>
+        <button onclick="setTableFilter('31-40', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">31-40</button>
+        <button onclick="setTableFilter('41-50', this)" class="table-filter-btn px-3 py-1.5 rounded-xl font-bold bg-base-card text-base-muted border border-base-border hover:bg-base-bg hover:text-base-text transition-all">41-50</button>
+      </div>
+    </header>
 
-          <div class="relative w-full sm:w-56">
-            <input type="text" id="menuSearchInput" oninput="renderCartaManager()" placeholder="Buscar plato..." class="w-full bg-base-bg border border-base-border rounded-xl py-2 pl-8 pr-3 text-xs font-bold outline-none focus:border-primary text-base-text">
-            <span class="absolute left-2.5 top-2 text-xs text-base-muted/70">🔍</span>
-          </div>
-        </div>
-
-        <div id="menuItemsList" class="divide-y divide-base-border">
-          <p class="text-center py-10 text-xs text-base-muted">Cargando productos...</p>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main>
+      <!-- VISTA 1: COCINA -->
+      <div id="view-cocina">
+        <div id="gridCocina" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando comandas de cocina...</div>
         </div>
       </div>
-    </div>
 
-    <!-- VISTA 5: FIDELIZACIÓN -->
-    <div id="view-fidelizacion" class="hidden max-w-4xl mx-auto space-y-5">
-      <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h2 class="font-serif-title text-xl font-bold text-base-text">Tarjetas de Fidelización</h2>
-            <p class="text-xs text-base-muted" id="loyaltyRulesLabel">Busca un móvil para consultar sus sellos o canjear un premio.</p>
-          </div>
-          <div class="relative w-full sm:w-64">
-            <input type="tel" id="phoneSearchInput" oninput="renderFidelizacion()" placeholder="Buscar por teléfono..." class="w-full bg-base-bg border border-base-border rounded-xl py-2.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-primary text-base-text">
-            <span class="absolute left-3 top-2.5 text-xs text-base-muted/70">🔍</span>
-          </div>
-        </div>
-
-        <div id="loyaltyList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <p class="col-span-full text-center py-10 text-xs text-base-muted">Cargando clientes fidelizados...</p>
+      <!-- VISTA 2: BARRA -->
+      <div id="view-barra" class="hidden">
+        <div id="gridBarra" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando rondas de barra...</div>
         </div>
       </div>
-    </div>
 
-    <!-- VISTA 6: CONFIGURACIÓN Y PERSONALIZACIÓN DE MARCA -->
-    <div id="view-ajustes" class="hidden max-w-2xl mx-auto space-y-5">
-      <div class="bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-5">
-        <div class="border-b border-base-border pb-3">
-          <h2 class="font-serif-title text-xl font-bold text-base-text">Configuración del Local</h2>
-          <p class="text-xs text-base-muted">Define cuántas mesas tiene el restaurante, los sellos y el color de marca.</p>
+      <!-- VISTA 3: CAJA & MESAS -->
+      <div id="view-caja" class="hidden">
+        <div id="gridCaja" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Consultando cuentas de mesas...</div>
+        </div>
+      </div>
+
+      <!-- VISTA 4: GESTOR DE CARTA -->
+      <div id="view-carta" class="hidden max-w-5xl mx-auto space-y-5">
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
+          <div class="flex items-center justify-between border-b border-base-border pb-3">
+            <div>
+              <h2 class="font-serif-title text-xl font-bold text-base-text">Añadir Producto a la Carta</h2>
+              <p class="text-xs text-base-muted">Los cambios se reflejan al instante en los móviles de los clientes.</p>
+            </div>
+            <span id="totalProductsBadge" class="text-xs font-extrabold px-3 py-1 rounded-xl bg-primary-light text-primary-dark border border-primary/20">
+              0 platos
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Categoría</label>
+              <select id="newProdCat" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+                <option value="Entrantes">Entrantes</option>
+                <option value="Para picar">Para picar</option>
+                <option value="Arroces">Arroces</option>
+                <option value="Carnes">Carnes</option>
+                <option value="Pescados">Pescados</option>
+                <option value="Bebidas">Bebidas</option>
+                <option value="Postres">Postres</option>
+                <option value="Vinos">Vinos</option>
+              </select>
+            </div>
+
+            <div class="sm:col-span-3">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Nombre del plato / bebida *</label>
+              <input type="text" id="newProdName" placeholder="Ej. Croquetas de Boletus" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Descripción (opcional)</label>
+              <input type="text" id="newProdDesc" placeholder="Ej. 6 unidades" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-medium text-base-text outline-none focus:border-primary">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Precio (€) *</label>
+              <input type="number" id="newProdPrice" step="0.10" min="0" placeholder="9.50" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-black text-base-text outline-none focus:border-primary">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Tiempo</label>
+              <select id="newProdTime" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+                <option value="10">⚡ ~10 min</option>
+                <option value="20">🍳 ~20 min</option>
+                <option value="30">🥘 ~30 min</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button id="addProdBtn" onclick="createProduct()" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all active:scale-95 uppercase tracking-wider">
+              + Añadir a la Carta
+            </button>
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Número de mesas activas:</label>
-            <input type="number" id="inputTotalTables" min="1" max="150" value="10" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-black text-base-text outline-none focus:border-primary">
-            <p class="text-[11px] text-base-muted mt-1" id="currentTablesCountText">Actualmente hay 0 mesas creadas.</p>
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs w-full sm:w-auto">
+              <button onclick="setMenuCatFilter('Todas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card transition-all">Todas</button>
+              <button onclick="setMenuCatFilter('Entrantes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Entrantes</button>
+              <button onclick="setMenuCatFilter('Para picar', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Para picar</button>
+              <button onclick="setMenuCatFilter('Arroces', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Arroces</button>
+              <button onclick="setMenuCatFilter('Carnes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Carnes</button>
+              <button onclick="setMenuCatFilter('Pescados', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Pescados</button>
+              <button onclick="setMenuCatFilter('Bebidas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Bebidas</button>
+              <button onclick="setMenuCatFilter('Postres', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Postres</button>
+            </div>
+
+            <div class="relative w-full sm:w-56">
+              <input type="text" id="menuSearchInput" oninput="renderCartaManager()" placeholder="Buscar plato..." class="w-full bg-base-bg border border-base-border rounded-xl py-2 pl-8 pr-3 text-xs font-bold outline-none focus:border-primary text-base-text">
+              <span class="absolute left-2.5 top-2 text-xs text-base-muted/70">🔍</span>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Sellos para conseguir premio:</label>
-            <input type="number" id="inputStampsReq" min="2" max="30" value="8" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-black text-base-text outline-none focus:border-primary">
+          <div id="menuItemsList" class="divide-y divide-base-border">
+            <p class="text-center py-10 text-xs text-base-muted">Cargando productos...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 5: FIDELIZACIÓN -->
+      <div id="view-fidelizacion" class="hidden max-w-4xl mx-auto space-y-5">
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 class="font-serif-title text-xl font-bold text-base-text">Tarjetas de Fidelización</h2>
+              <p class="text-xs text-base-muted" id="loyaltyRulesLabel">Busca un móvil para consultar sus sellos o canjear un premio.</p>
+            </div>
+            <div class="relative w-full sm:w-64">
+              <input type="tel" id="phoneSearchInput" oninput="renderFidelizacion()" placeholder="Buscar por teléfono..." class="w-full bg-base-bg border border-base-border rounded-xl py-2.5 pl-9 pr-3 text-xs font-bold outline-none focus:border-primary text-base-text">
+              <span class="absolute left-3 top-2.5 text-xs text-base-muted/70">🔍</span>
+            </div>
           </div>
 
-          <div class="sm:col-span-2">
-            <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Descripción del premio:</label>
-            <input type="text" id="inputRewardDesc" placeholder="Ej. 1 Consumición o Postre gratis" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+          <div id="loyaltyList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <p class="col-span-full text-center py-10 text-xs text-base-muted">Cargando clientes fidelizados...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 6: CONFIGURACIÓN Y PERSONALIZACIÓN DE MARCA -->
+      <div id="view-ajustes" class="hidden max-w-2xl mx-auto space-y-5">
+        <div class="bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-5">
+          <div class="border-b border-base-border pb-3">
+            <h2 class="font-serif-title text-xl font-bold text-base-text">Configuración del Local</h2>
+            <p class="text-xs text-base-muted">Define cuántas mesas tiene el restaurante, los sellos y el color de marca.</p>
           </div>
 
-          <!-- Selector de Color Corporativo -->
-          <div class="sm:col-span-2 pt-2 border-t border-base-border">
-            <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-2">
-              Color corporativo del restaurante (Carta, Sellos y QRs):
-            </label>
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="flex items-center gap-2 bg-base-bg border border-base-border rounded-xl px-3 py-1.5">
-                <input type="color" id="inputPrimaryColor" value="#06B6D4" oninput="previewBrandColor(this.value)" class="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
-                <span id="colorHexLabel" class="text-xs font-mono font-extrabold text-base-text">#06B6D4</span>
-              </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Número de mesas activas:</label>
+              <input type="number" id="inputTotalTables" min="1" max="150" value="10" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-black text-base-text outline-none focus:border-primary">
+              <p class="text-[11px] text-base-muted mt-1" id="currentTablesCountText">Actualmente hay 0 mesas creadas.</p>
+            </div>
 
-              <!-- Paletas rápidas recomendadas -->
-              <div class="flex items-center gap-2">
-                <button type="button" onclick="selectPresetColor('#12B89B')" title="Turquesa SW&Go (Logo)" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#12B89B"></button>
-                <button type="button" onclick="selectPresetColor('#18181B')" title="Negro Elegante" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#18181B"></button>
-                <button type="button" onclick="selectPresetColor('#784B2A')" title="Marrón Madera" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#784B2A"></button>
-                <button type="button" onclick="selectPresetColor('#7F1D1D')" title="Granate Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#7F1D1D"></button>
-                <button type="button" onclick="selectPresetColor('#1E3A8A')" title="Azul Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#1E3A8A"></button>
-                <button type="button" onclick="selectPresetColor('#14532D')" title="Verde Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#14532D"></button>
+            <div>
+              <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Sellos para conseguir premio:</label>
+              <input type="number" id="inputStampsReq" min="2" max="30" value="8" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-black text-base-text outline-none focus:border-primary">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Descripción del premio:</label>
+              <input type="text" id="inputRewardDesc" placeholder="Ej. 1 Consumición o Postre gratis" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
+            </div>
+
+            <div class="sm:col-span-2 pt-2 border-t border-base-border">
+              <label class="block text-[11px] font-bold text-base-muted uppercase tracking-wider mb-2">
+                Color corporativo del restaurante (Carta y Panel):
+              </label>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2 bg-base-bg border border-base-border rounded-xl px-3 py-1.5">
+                  <input type="color" id="inputPrimaryColor" value="#12B89B" oninput="previewBrandColor(this.value)" class="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
+                  <span id="colorHexLabel" class="text-xs font-mono font-extrabold text-base-text">#12B89B</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="selectPresetColor('#12B89B')" title="Turquesa SW&Go" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#12B89B"></button>
+                  <button type="button" onclick="selectPresetColor('#18181B')" title="Negro Elegante" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#18181B"></button>
+                  <button type="button" onclick="selectPresetColor('#784B2A')" title="Marrón Madera" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#784B2A"></button>
+                  <button type="button" onclick="selectPresetColor('#7F1D1D')" title="Granate Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#7F1D1D"></button>
+                  <button type="button" onclick="selectPresetColor('#1E3A8A')" title="Azul Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#1E3A8A"></button>
+                  <button type="button" onclick="selectPresetColor('#14532D')" title="Verde Oscuro" class="w-7 h-7 rounded-full border-2 border-white shadow-xs transition-transform hover:scale-110" style="background:#14532D"></button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="flex flex-col sm:flex-row gap-3 pt-2">
-          <button id="saveSettingsBtn" onclick="saveRestaurantSettings()" class="flex-1 bg-base-text hover:bg-black text-base-card font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95">
-            Guardar Configuración
-          </button>
-          <a id="openQrsLink" href="qrs.html" target="_blank" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 text-center flex items-center justify-center gap-1.5">
-            <span>🖨️</span>
-            <span>Ver / Imprimir QRs</span>
-          </a>
+          <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button id="saveSettingsBtn" onclick="saveRestaurantSettings()" class="flex-1 bg-base-text hover:bg-black text-base-card font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95">
+              Guardar Configuración
+            </button>
+            <a id="openQrsLink" href="qrs.html" target="_blank" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 text-center flex items-center justify-center gap-1.5">
+              <span>🖨️</span>
+              <span>Ver / Imprimir QRs</span>
+            </a>
+          </div>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
 
   <script>
-    // ==========================================
-    // CONFIGURACIÓN DE SUPABASE (QR&Go)
-    // ==========================================
     const SUPABASE_URL = "https://admoytjzbhdngkcafhua.supabase.co";
     const SUPABASE_KEY = "sb_publishable_9KG1_KEF4Ik4SpmfTdEUqA_7vRD5Cq0";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -314,7 +348,7 @@
     let completedDrinksState = {};
 
     function applyBrandTheme(hex) {
-      const cleanHex = /^#[0-9A-F]{6}$/i.test(hex || '') ? hex : '#06B6D4';
+      const cleanHex = /^#[0-9A-F]{6}$/i.test(hex || '') ? hex : '#12B89B';
       const r = parseInt(cleanHex.slice(1, 3), 16);
       const g = parseInt(cleanHex.slice(3, 5), 16);
       const b = parseInt(cleanHex.slice(5, 7), 16);
@@ -350,24 +384,82 @@
     }, 1000);
 
     setInterval(() => {
-      if (currentView === 'cocina' || currentView === 'barra') renderCurrentView();
+      if (restaurantData && (currentView === 'cocina' || currentView === 'barra')) renderCurrentView();
     }, 10000);
+
+    // ==========================================
+    // 0. CONTROL DE ACCESO (SUPABASE AUTH)
+    // ==========================================
+    async function checkAuthAndBoot() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('appContainer').classList.add('hidden');
+        return;
+      }
+
+      // Buscar el restaurante vinculado a este usuario
+      const { data: adminLink, error: linkErr } = await sb
+        .from('restaurant_admins')
+        .select('restaurant_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (linkErr || !adminLink) {
+        await sb.auth.signOut();
+        const errEl = document.getElementById('loginError');
+        errEl.innerText = "Esta cuenta no tiene ningún restaurante asignado.";
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appContainer').classList.remove('hidden');
+      await initPanel(adminLink.restaurant_id);
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginBtn');
+
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerText = "Verificando...";
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      btn.disabled = false;
+      btn.innerText = "Entrar al Panel";
+
+      if (error) {
+        errEl.innerText = "Correo o contraseña incorrectos.";
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      await checkAuthAndBoot();
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      window.location.reload();
+    }
 
     // ==========================================
     // 1. ARRANQUE Y CONEXIÓN EN TIEMPO REAL
     // ==========================================
-    async function initPanel() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const restSlug = urlParams.get('rest') || 'qr-and-go';
-
+    async function initPanel(restaurantId) {
       const { data: rest, error } = await sb
         .from('restaurants')
         .select('*')
-        .eq('slug', restSlug)
+        .eq('id', restaurantId)
         .single();
 
       if (error || !rest) {
-        document.body.innerHTML = `<div class="p-10 text-center text-red-600 font-bold">Restaurante "${restSlug}" no encontrado en Supabase.</div>`;
+        alert("No se pudo cargar el restaurante.");
         return;
       }
 
@@ -378,7 +470,7 @@
       document.title = `Panel ${rest.name} - QR&Go`;
       document.getElementById('loyaltyRulesLabel').innerText =
         `Meta actual: ${rest.stamps_required} sellos = ${rest.reward_description}`;
-      document.getElementById('openQrsLink').href = `qrs.html?rest=${encodeURIComponent(rest.slug)}`;
+      document.getElementById('openQrsLink').href = `qrs.html`;
 
       await loadTables();
       fillSettingsForm();
@@ -402,7 +494,7 @@
       document.getElementById('inputTotalTables').value = tablesList.length || 10;
       document.getElementById('inputStampsReq').value = restaurantData.stamps_required || 8;
       document.getElementById('inputRewardDesc').value = restaurantData.reward_description || '';
-      const color = restaurantData.primary_color || '#06B6D4';
+      const color = restaurantData.primary_color || '#12B89B';
       document.getElementById('inputPrimaryColor').value = color;
       document.getElementById('colorHexLabel').innerText = color.toUpperCase();
     }
@@ -411,7 +503,7 @@
       const totalTables = parseInt(document.getElementById('inputTotalTables').value, 10);
       const stampsReq = parseInt(document.getElementById('inputStampsReq').value, 10) || 8;
       const rewardDesc = document.getElementById('inputRewardDesc').value.trim() || '1 Consumición gratis';
-      const primaryColor = document.getElementById('inputPrimaryColor').value || '#06B6D4';
+      const primaryColor = document.getElementById('inputPrimaryColor').value || '#12B89B';
 
       if (!totalTables || totalTables < 1 || totalTables > 150) {
         alert("Introduce un número de mesas válido (entre 1 y 150).");
@@ -1120,7 +1212,7 @@
       await fetchLoyaltyCards();
     }
 
-    initPanel();
+    checkAuthAndBoot();
   </script>
 </body>
 </html>
