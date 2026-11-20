@@ -97,7 +97,6 @@
     const SUPABASE_KEY = "sb_publishable_9KG1_KEF4Ik4SpmfTdEUqA_7vRD5Cq0";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Auto-generar slug mientras escriben el nombre
     document.getElementById('restName').addEventListener('input', (e) => {
       const slugVal = e.target.value
         .toLowerCase()
@@ -126,29 +125,35 @@
       btn.innerText = "Registrando restaurante...";
 
       try {
-        // Llamar a la función RPC que creamos en Supabase
-        const { data, error } = await sb.rpc('register_new_restaurant', {
-          p_email: email,
-          p_password: password,
+        // 1. Crear el usuario nativamente en Supabase Auth
+        const { data: authData, error: authError } = await sb.auth.signUp({
+          email,
+          password
+        });
+
+        if (authError) throw authError;
+        const userId = authData.user?.id;
+        if (!userId) throw new Error("No se pudo crear el usuario de acceso.");
+
+        // 2. Crear el restaurante y sus mesas asociadas a ese usuario
+        const { error: restError } = await sb.rpc('create_restaurant_for_user', {
+          p_user_id: userId,
           p_name: name,
           p_slug: slug,
           p_total_tables: totalTables
         });
 
-        if (error) throw error;
+        if (restError) throw restError;
 
-        succEl.innerText = "¡Restaurante registrado con éxito! Redirigiendo al panel...";
+        succEl.innerText = "¡Restaurante creado con éxito! Entrando al panel...";
         succEl.classList.remove('hidden');
-
-        // Iniciar sesión automáticamente con el nuevo usuario
-        await sb.auth.signInWithPassword({ email, password });
 
         setTimeout(() => {
           window.location.href = 'panel.html';
-        }, 1500);
+        }, 1200);
 
       } catch (err) {
-        errEl.innerText = "Error: " + (err.message || "El slug o el correo ya están en uso.");
+        errEl.innerText = "Error: " + (err.message || "No se pudo completar el registro.");
         errEl.classList.remove('hidden');
         btn.disabled = false;
         btn.innerText = "Crear mi Carta y Panel";
