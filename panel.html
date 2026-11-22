@@ -44,7 +44,7 @@
 </head>
 <body class="bg-base-bg text-base-text min-h-screen font-sans">
 
-  <!-- PANTALLA DE LOGIN (Visible si no hay sesión iniciada) -->
+  <!-- PANTALLA DE LOGIN -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-base-card border border-base-border rounded-3xl p-8 w-full max-w-sm shadow-sm space-y-6">
       <div class="text-center space-y-1.5">
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <!-- APLICACIÓN PRINCIPAL (Oculta hasta iniciar sesión) -->
+  <!-- APLICACIÓN PRINCIPAL -->
   <div id="appContainer" class="hidden p-4 sm:p-6">
     <!-- Header Centralizado -->
     <header class="pb-4 border-b border-base-border mb-6 space-y-4">
@@ -94,7 +94,7 @@
         </div>
 
         <!-- Selector de Vistas -->
-        <div class="flex flex-wrap items-center gap-1 bg-base-card border border-base-border p-1 rounded-2xl text-xs font-bold w-full lg:w-auto justify-center">
+        <div class="flex flex-wrap items-center gap-1 bg-base-card border border-base-border p-1 rounded-2xl text-xs font-bold w-full lg:w-auto justify-center relative">
           <button onclick="switchView('cocina')" id="tab-cocina" class="px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5">
             <span>👨‍🍳 Cocina</span>
             <span id="badgeCocina" class="bg-primary text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
@@ -107,15 +107,30 @@
             <span>💳 Caja & Mesas</span>
             <span id="badgeCaja" class="bg-base-text text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
           </button>
-          <button onclick="switchView('carta')" id="tab-carta" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-            <span>🍽️ Carta</span>
-          </button>
-          <button onclick="switchView('fidelizacion')" id="tab-fidelizacion" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-            <span>🎟️ Sellos</span>
-          </button>
-          <button onclick="switchView('ajustes')" id="tab-ajustes" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
-            <span>⚙️ Mesas & Local</span>
-          </button>
+
+          <!-- Botón Desplegable de Administración -->
+          <div class="relative" id="adminDropdownWrapper">
+            <button onclick="toggleAdminMenu(event)" id="tab-admin-dropdown" class="px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5">
+              <span id="adminDropdownLabel">⚙️ Gestión</span>
+              <span class="text-[10px]">▾</span>
+            </button>
+
+            <div id="adminDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-base-card border border-base-border rounded-2xl shadow-xl py-1.5 z-50 text-left">
+              <button onclick="selectAdminView('carta', '🍽️ Carta')" id="tab-carta" class="w-full px-4 py-2.5 text-left text-xs font-bold text-base-text hover:bg-base-bg flex items-center gap-2 transition-colors">
+                <span>🍽️</span> <span>Carta y Platos</span>
+              </button>
+              <button onclick="selectAdminView('fidelizacion', '🎟️ Sellos')" id="tab-fidelizacion" class="w-full px-4 py-2.5 text-left text-xs font-bold text-base-text hover:bg-base-bg flex items-center gap-2 transition-colors">
+                <span>🎟️</span> <span>Fidelización</span>
+              </button>
+              <button onclick="selectAdminView('estadisticas', '📊 Estadísticas')" id="tab-estadisticas" class="w-full px-4 py-2.5 text-left text-xs font-bold text-base-text hover:bg-base-bg flex items-center gap-2 transition-colors">
+                <span>📊</span> <span>Estadísticas</span>
+              </button>
+              <div class="my-1 border-t border-base-border"></div>
+              <button onclick="selectAdminView('ajustes', '⚙️ Mesas & Local')" id="tab-ajustes" class="w-full px-4 py-2.5 text-left text-xs font-bold text-base-text hover:bg-base-bg flex items-center gap-2 transition-colors">
+                <span>⚙️</span> <span>Mesas & Local</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="flex items-center gap-3 self-end lg:self-center">
@@ -125,6 +140,10 @@
           </div>
           <button onclick="handleLogout()" title="Cerrar sesión" class="bg-base-card hover:bg-red-50 text-base-muted hover:text-red-600 border border-base-border px-3 py-2 rounded-xl text-xs font-bold transition-all">
             Salir
+          </button>
+          <button onclick="toggleSound()" id="soundToggleBtn" title="Silenciar / Activar sonido" class="bg-base-card hover:bg-base-bg text-base-text border border-base-border px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5">
+            <span id="soundIcon">🔔</span>
+            <span id="soundText" class="hidden sm:inline">Sonido: ON</span>
           </button>
         </div>
       </div>
@@ -145,16 +164,20 @@
     <main>
       <!-- VISTA 1: COCINA -->
       <div id="view-cocina">
-        <div id="gridCocina" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando comandas de cocina...</div>
+        <div class="flex items-center gap-1.5 mb-4 bg-base-card border border-base-border p-1 rounded-2xl w-full sm:w-72">
+          <button id="btnCocinaTables" onclick="setKitchenSubView('tables')" class="flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white">🍽️ Por Mesas</button>
+          <button id="btnCocinaBatch" onclick="setKitchenSubView('batch')" class="flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text">👨‍🍳 Producción</button>
         </div>
+        <div id="gridCocina" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
       </div>
 
       <!-- VISTA 2: BARRA -->
       <div id="view-barra" class="hidden">
-        <div id="gridBarra" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div class="col-span-full text-center py-20 text-base-muted font-medium text-xs">Cargando rondas de barra...</div>
+        <div class="flex items-center gap-1.5 mb-4 bg-base-card border border-base-border p-1 rounded-2xl w-full sm:w-72">
+          <button id="btnBarraTables" onclick="setBarSubView('tables')" class="flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white">🍸 Por Mesas</button>
+          <button id="btnBarraBatch" onclick="setBarSubView('batch')" class="flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text">🍹 Producción</button>
         </div>
+        <div id="gridBarra" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
       </div>
 
       <!-- VISTA 3: CAJA & MESAS -->
@@ -192,32 +215,83 @@
               </select>
             </div>
 
-            <div class="sm:col-span-3">
-              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Nombre del plato / bebida *</label>
+            <!-- Imagen -->
+            <div class="sm:col-span-9">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Imagen del plato (Opcional - Máx 2MB)</label>
+              <input type="file" id="newProdImageFile" accept="image/*" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs text-base-text file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary-dark cursor-pointer">
+            </div>
+
+            <!-- Datos principales (Español) -->
+            <div class="sm:col-span-6">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Nombre (Español) *</label>
               <input type="text" id="newProdName" placeholder="Ej. Croquetas de Boletus" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
             </div>
-
-            <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Descripción (opcional)</label>
-              <input type="text" id="newProdDesc" placeholder="Ej. 6 unidades" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-medium text-base-text outline-none focus:border-primary">
+            <div class="sm:col-span-6">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Descripción (Español)</label>
+              <input type="text" id="newProdDesc" placeholder="Ej. 6 unidades caseras" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-medium text-base-text outline-none focus:border-primary">
             </div>
 
-            <div class="sm:col-span-2">
+            <!-- Precios y Tiempos -->
+            <div class="sm:col-span-6">
               <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Precio (€) *</label>
               <input type="number" id="newProdPrice" step="0.10" min="0" placeholder="9.50" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-black text-base-text outline-none focus:border-primary">
             </div>
-
-            <div class="sm:col-span-2">
-              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Tiempo</label>
+            <div class="sm:col-span-6">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Tiempo estimado</label>
               <select id="newProdTime" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
                 <option value="10">⚡ ~10 min</option>
                 <option value="20">🍳 ~20 min</option>
                 <option value="30">🥘 ~30 min</option>
               </select>
             </div>
+
+            <!-- Traducciones adicionales -->
+            <div class="sm:col-span-12 pt-2 border-t border-base-border">
+              <p class="text-[11px] font-black text-base-text mb-2">🌍 Traducciones opcionales (Català, English, Français, Italiano):</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-base-bg p-3 rounded-2xl border border-base-border">
+                <div>
+                  <input type="text" id="newProdNameEn" placeholder="Name (English)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs mb-1.5 outline-none focus:border-primary">
+                  <input type="text" id="newProdDescEn" placeholder="Description (English)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+                </div>
+                <div>
+                  <input type="text" id="newProdNameCa" placeholder="Nom (Català)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs mb-1.5 outline-none focus:border-primary">
+                  <input type="text" id="newProdDescCa" placeholder="Descripció (Català)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+                </div>
+                <div>
+                  <input type="text" id="newProdNameFr" placeholder="Nom (Français)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs mb-1.5 outline-none focus:border-primary">
+                  <input type="text" id="newProdDescFr" placeholder="Description (Français)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+                </div>
+                <div>
+                  <input type="text" id="newProdNameIt" placeholder="Nome (Italiano)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs mb-1.5 outline-none focus:border-primary">
+                  <input type="text" id="newProdDescIt" placeholder="Descrizione (Italiano)" class="w-full bg-base-card border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+                </div>
+              </div>
+            </div>
+
+            <!-- Alérgenos -->
+            <div class="sm:col-span-12 pt-2 border-t border-base-border">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1.5">Alérgenos / Restricciones:</label>
+              <div class="flex flex-wrap gap-3 text-xs">
+                <label class="flex items-center gap-1.5 cursor-pointer bg-base-bg px-2.5 py-1.5 rounded-xl border border-base-border">
+                  <input type="checkbox" name="newProdAllergen" value="Gluten" class="rounded accent-primary"> 🌾 Gluten
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer bg-base-bg px-2.5 py-1.5 rounded-xl border border-base-border">
+                  <input type="checkbox" name="newProdAllergen" value="Lácteos" class="rounded accent-primary"> 🥛 Lácteos
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer bg-base-bg px-2.5 py-1.5 rounded-xl border border-base-border">
+                  <input type="checkbox" name="newProdAllergen" value="Huevos" class="rounded accent-primary"> 🥚 Huevos
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer bg-base-bg px-2.5 py-1.5 rounded-xl border border-base-border">
+                  <input type="checkbox" name="newProdAllergen" value="Frutos secos" class="rounded accent-primary"> 🥜 Frutos secos
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer bg-base-bg px-2.5 py-1.5 rounded-xl border border-base-border">
+                  <input type="checkbox" name="newProdAllergen" value="Pescado" class="rounded accent-primary"> 🐟 Pescado
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="flex justify-end pt-2">
             <button id="addProdBtn" onclick="createProduct()" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all active:scale-95 uppercase tracking-wider">
               + Añadir a la Carta
             </button>
@@ -327,7 +401,119 @@
           </div>
         </div>
       </div>
+
+      <!-- VISTA 7: ESTADÍSTICAS Y RESUMEN -->
+      <div id="view-estadisticas" class="hidden max-w-5xl mx-auto space-y-5">
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h2 class="font-serif-title text-xl font-bold text-base-text">Dashboard de Rendimiento</h2>
+            <p class="text-xs text-base-muted">Métricas históricas, franjas horarias y platos más vendidos</p>
+          </div>
+          <div>
+            <select id="weekFilterSelect" onchange="renderEstadisticas()" class="bg-base-bg border border-base-border rounded-xl px-3 py-2 text-xs font-bold text-base-text outline-none focus:border-primary">
+              <option value="all">📅 Todo el histórico</option>
+              <option value="this_week">Esta semana</option>
+              <option value="last_week">Semana pasada</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-1">
+            <p class="text-[11px] font-bold text-base-muted uppercase tracking-wider">Facturación Total</p>
+            <p id="statTotalRevenue" class="text-2xl font-black text-primary-dark">0.00 €</p>
+          </div>
+          <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-1">
+            <p class="text-[11px] font-bold text-base-muted uppercase tracking-wider">Comandas Totales</p>
+            <p id="statTotalOrders" class="text-2xl font-black text-base-text">0</p>
+          </div>
+          <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-1">
+            <p class="text-[11px] font-bold text-base-muted uppercase tracking-wider">Clientes Fidelizados</p>
+            <p id="statTotalLoyalty" class="text-2xl font-black text-base-text">0</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-4">
+            <div class="border-b border-base-border pb-3">
+              <h3 class="font-serif-title text-lg font-bold text-base-text">⏰ Horas Pico (Franjas de 30 min)</h3>
+              <p class="text-xs text-base-muted">Distribución de comandas por bloques horarios</p>
+            </div>
+            <div id="statTimeSlots" class="space-y-3 text-xs pt-2">
+              <p class="text-center py-6 text-base-muted">Cargando gráfico...</p>
+            </div>
+          </div>
+
+          <div class="bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-4">
+            <div class="border-b border-base-border pb-3">
+              <h3 class="font-serif-title text-lg font-bold text-base-text">🏆 Top Platos Vendidos</h3>
+              <p class="text-xs text-base-muted">Unidades acumuladas por producto</p>
+            </div>
+            <div id="statTopProducts" class="space-y-3 text-xs pt-2 max-h-80 overflow-y-auto pr-1">
+              <p class="text-center py-6 text-base-muted">Cargando ranking...</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
+  </div>
+
+  <!-- Modal de Edición de Producto -->
+  <div id="editProductModal" class="fixed inset-0 bg-base-text/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-base-card rounded-3xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-base-border shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <h3 class="font-serif-title font-bold text-lg text-base-text">✏️ Editar Plato / Producto</h3>
+        <button onclick="closeEditModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+
+      <input type="hidden" id="editProdId">
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-base-muted uppercase tracking-wider mb-1">Nombre (Español) *</label>
+          <input type="text" id="editNameEs" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block font-bold text-base-muted uppercase tracking-wider mb-1">Descripción (Español)</label>
+          <input type="text" id="editDescEs" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 text-base-text outline-none focus:border-primary">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-base-border">
+          <div>
+            <input type="text" id="editNameEn" placeholder="Name (English)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs mb-1 outline-none focus:border-primary">
+            <input type="text" id="editDescEn" placeholder="Description (English)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+          </div>
+          <div>
+            <input type="text" id="editNameCa" placeholder="Nom (Català)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs mb-1 outline-none focus:border-primary">
+            <input type="text" id="editDescCa" placeholder="Descripció (Català)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+          </div>
+          <div>
+            <input type="text" id="editNameFr" placeholder="Nom (Français)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs mb-1 outline-none focus:border-primary">
+            <input type="text" id="editDescFr" placeholder="Description (Français)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+          </div>
+          <div>
+            <input type="text" id="editNameIt" placeholder="Nome (Italiano)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs mb-1 outline-none focus:border-primary">
+            <input type="text" id="editDescIt" placeholder="Descrizione (Italiano)" class="w-full bg-base-bg border border-base-border rounded-xl p-2 text-xs outline-none focus:border-primary">
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-base-border">
+          <label class="block font-bold text-base-muted uppercase tracking-wider mb-1.5">Alérgenos:</label>
+          <div id="editAllergensContainer" class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1 bg-base-bg px-2 py-1 rounded-lg border border-base-border cursor-pointer"><input type="checkbox" name="editAllergen" value="Gluten" class="accent-primary"> 🌾 Gluten</label>
+            <label class="flex items-center gap-1 bg-base-bg px-2 py-1 rounded-lg border border-base-border cursor-pointer"><input type="checkbox" name="editAllergen" value="Lácteos" class="accent-primary"> 🥛 Lácteos</label>
+            <label class="flex items-center gap-1 bg-base-bg px-2 py-1 rounded-lg border border-base-border cursor-pointer"><input type="checkbox" name="editAllergen" value="Huevos" class="accent-primary"> 🥚 Huevos</label>
+            <label class="flex items-center gap-1 bg-base-bg px-2 py-1 rounded-lg border border-base-border cursor-pointer"><input type="checkbox" name="editAllergen" value="Frutos secos" class="accent-primary"> 🥜 Frutos secos</label>
+            <label class="flex items-center gap-1 bg-base-bg px-2 py-1 rounded-lg border border-base-border cursor-pointer"><input type="checkbox" name="editAllergen" value="Pescado" class="accent-primary"> 🐟 Pescado</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-base-border">
+        <button onclick="closeEditModal()" class="bg-base-bg hover:bg-base-border text-base-text font-bold px-4 py-2.5 rounded-xl">Cancelar</button>
+        <button onclick="saveEditedProduct()" class="bg-primary hover:bg-primary-dark text-white font-extrabold px-5 py-2.5 rounded-xl uppercase tracking-wider">Guardar Cambios</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -343,6 +529,7 @@
     let currentView = 'cocina';
     let currentFilter = 'all';
     let menuCatFilter = 'Todas';
+    let allHistoricalOrders = [];
 
     let completedKitchenState = {};
     let completedDrinksState = {};
@@ -387,9 +574,6 @@
       if (restaurantData && (currentView === 'cocina' || currentView === 'barra')) renderCurrentView();
     }, 10000);
 
-    // ==========================================
-    // 0. CONTROL DE ACCESO (SUPABASE AUTH)
-    // ==========================================
     async function checkAuthAndBoot() {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) {
@@ -398,7 +582,6 @@
         return;
       }
 
-      // Buscar el restaurante vinculado a este usuario
       const { data: adminLink, error: linkErr } = await sb
         .from('restaurant_admins')
         .select('restaurant_id')
@@ -448,9 +631,6 @@
       window.location.reload();
     }
 
-    // ==========================================
-    // 1. ARRANQUE Y CONEXIÓN EN TIEMPO REAL
-    // ==========================================
     async function initPanel(restaurantId) {
       const { data: rest, error } = await sb
         .from('restaurants')
@@ -477,6 +657,7 @@
       await fetchActiveOrders();
       await fetchMenuProducts();
       await fetchLoyaltyCards();
+      await fetchHistoricalOrders();
       subscribeRealtime();
     }
 
@@ -605,35 +786,91 @@
       if (currentView === 'fidelizacion') renderFidelizacion();
     }
 
+    async function fetchHistoricalOrders() {
+      const { data, error } = await sb
+        .from('orders')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .order('created_at', { ascending: false });
+
+      if (!error) {
+        allHistoricalOrders = data || [];
+      }
+    }
+
     function subscribeRealtime() {
       sb.channel('panel-live-' + restaurantData.id)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantData.id}` }, () => fetchActiveOrders())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantData.id}` }, () => {
+          playNotificationSound();
+          fetchActiveOrders();
+          fetchHistoricalOrders();
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantData.id}` }, () => {
+          fetchActiveOrders();
+          fetchHistoricalOrders();
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `restaurant_id=eq.${restaurantData.id}` }, () => { loadTables(); fetchActiveOrders(); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `restaurant_id=eq.${restaurantData.id}` }, () => fetchMenuProducts())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_cards', filter: `restaurant_id=eq.${restaurantData.id}` }, () => fetchLoyaltyCards())
         .subscribe();
     }
 
-    // ==========================================
-    // 2. NAVEGACIÓN Y FILTROS
-    // ==========================================
+    function toggleAdminMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('adminDropdownMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    function selectAdminView(view, labelText) {
+      document.getElementById('adminDropdownMenu').classList.add('hidden');
+      document.getElementById('adminDropdownLabel').innerText = labelText;
+      switchView(view);
+    }
+
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('adminDropdownWrapper');
+      const menu = document.getElementById('adminDropdownMenu');
+      if (wrapper && menu && !wrapper.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
     function switchView(view) {
       currentView = view;
-      const tabs = ['cocina', 'barra', 'caja', 'carta', 'fidelizacion', 'ajustes'];
-      tabs.forEach(t => {
-        const btn = document.getElementById(`tab-${t}`);
-        const viewEl = document.getElementById(`view-${t}`);
-        if (t === view) {
-          btn.className = "px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5";
-          viewEl.classList.remove('hidden');
-        } else {
-          btn.className = "px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5";
-          viewEl.classList.add('hidden');
+      const allViews = ['cocina', 'barra', 'caja', 'carta', 'fidelizacion', 'ajustes', 'estadisticas'];
+      const mainTabs = ['cocina', 'barra', 'caja'];
+      const adminTabs = ['carta', 'fidelizacion', 'ajustes', 'estadisticas'];
+
+      allViews.forEach(v => {
+        const viewEl = document.getElementById(`view-${v}`);
+        if (viewEl) {
+          if (v === view) viewEl.classList.remove('hidden');
+          else viewEl.classList.add('hidden');
         }
       });
 
+      mainTabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (!btn) return;
+        if (t === view) {
+          btn.className = "px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5";
+        } else {
+          btn.className = "px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5";
+        }
+      });
+
+      const adminBtn = document.getElementById('tab-admin-dropdown');
+      if (adminBtn) {
+        if (adminTabs.includes(view)) {
+          adminBtn.className = "px-3.5 py-2 rounded-xl bg-base-text text-base-card transition-all flex items-center gap-1.5";
+        } else {
+          adminBtn.className = "px-3.5 py-2 rounded-xl text-base-muted hover:bg-base-bg hover:text-base-text transition-all flex items-center gap-1.5";
+          document.getElementById('adminDropdownLabel').innerText = "⚙️ Gestión";
+        }
+      }
+
       const filterBar = document.getElementById('tableFilterBar');
-      if (view === 'fidelizacion' || view === 'ajustes' || view === 'carta') filterBar.classList.add('hidden');
+      if (adminTabs.includes(view)) filterBar.classList.add('hidden');
       else filterBar.classList.remove('hidden');
 
       renderCurrentView();
@@ -685,20 +922,25 @@
     }
 
     function parseBarDrinks(order) {
-      const drinks = [];
-      if (order.is_waiter_call) {
-        drinks.push({ originalIndex: 0, qty: '', name: '🔔 LLAMADA AL CAMARERO' });
-        return drinks;
-      }
+  const drinks = [];
+  if (order.is_waiter_call) {
+    // Lee el mensaje real enviado desde el móvil (ya sea llamada normal o petición de cuenta con tarjeta/efectivo)
+    const callMessage = (order.items && order.items[0] && order.items[0].name)
+      ? order.items[0].name
+      : '🔔 LLAMADA AL CAMARERO';
 
-      (order.items || []).forEach((it, idx) => {
-        const cat = String(it.category || '').trim().toLowerCase();
-        if (BAR_CATEGORIES.some(bc => cat.includes(bc))) {
-          drinks.push({ originalIndex: idx, qty: it.qty, name: it.name });
-        }
-      });
-      return drinks;
+    drinks.push({ originalIndex: 0, qty: '', name: callMessage });
+    return drinks;
+  }
+
+  (order.items || []).forEach((it, idx) => {
+    const cat = String(it.category || '').trim().toLowerCase();
+    if (BAR_CATEGORIES.some(bc => cat.includes(bc))) {
+      drinks.push({ originalIndex: idx, qty: it.qty, name: it.name });
     }
+  });
+  return drinks;
+}
 
     function updateBadges() {
       const kCount = currentOrders.filter(o => {
@@ -727,11 +969,9 @@
       else if (currentView === 'carta') renderCartaManager();
       else if (currentView === 'fidelizacion') renderFidelizacion();
       else if (currentView === 'ajustes') fillSettingsForm();
+      else if (currentView === 'estadisticas') renderEstadisticas();
     }
 
-    // ==========================================
-    // 3. VISTA: COCINA
-    // ==========================================
     function renderCocina() {
       const grid = document.getElementById('gridCocina');
       const orders = currentOrders.filter(o => {
@@ -829,9 +1069,6 @@
       fetchActiveOrders();
     }
 
-    // ==========================================
-    // 4. VISTA: BARRA
-    // ==========================================
     function renderBarra() {
       const grid = document.getElementById('gridBarra');
       const orders = currentOrders.filter(o => {
@@ -916,9 +1153,6 @@
       fetchActiveOrders();
     }
 
-    // ==========================================
-    // 5. VISTA: CAJA & MESAS
-    // ==========================================
     function renderCaja() {
       const grid = document.getElementById('gridCaja');
       const tablesMap = {};
@@ -992,9 +1226,6 @@
       await fetchLoyaltyCards();
     }
 
-    // ==========================================
-    // 6. VISTA: GESTOR DE CARTA
-    // ==========================================
     function setMenuCatFilter(cat, clickedBtn) {
       menuCatFilter = cat;
       document.querySelectorAll('.menu-cat-btn').forEach(btn => {
@@ -1012,24 +1243,71 @@
       const description = document.getElementById('newProdDesc').value.trim();
       const price = parseFloat(document.getElementById('newProdPrice').value);
       const prep_time = parseInt(document.getElementById('newProdTime').value, 10) || 10;
+      
+      const name_en = document.getElementById('newProdNameEn').value.trim();
+      const description_en = document.getElementById('newProdDescEn').value.trim();
+      const name_ca = document.getElementById('newProdNameCa').value.trim();
+      const description_ca = document.getElementById('newProdDescCa').value.trim();
+      const name_fr = document.getElementById('newProdNameFr').value.trim();
+      const description_fr = document.getElementById('newProdDescFr').value.trim();
+      const name_it = document.getElementById('newProdNameIt').value.trim();
+      const description_it = document.getElementById('newProdDescIt').value.trim();
+
+      const selectedAllergens = Array.from(document.querySelectorAll('input[name="newProdAllergen"]:checked')).map(cb => cb.value);
+      const imageInput = document.getElementById('newProdImageFile');
 
       if (!name || isNaN(price) || price < 0) {
-        alert("Introduce al menos el nombre y un precio válido.");
+        alert("Introduce al menos el nombre en español y un precio válido.");
         return;
+      }
+
+      if (imageInput && imageInput.files && imageInput.files[0]) {
+        const file = imageInput.files[0];
+        const maxSize = 2 * 1024 * 1024;
+        if (file.size > maxSize) {
+          alert("⚠️ La imagen supera los 2 MB. Por favor, selecciona una foto más ligera.");
+          return;
+        }
       }
 
       const btn = document.getElementById('addProdBtn');
       btn.disabled = true;
-      btn.innerText = "Guardando...";
+      btn.innerText = "Subiendo y guardando...";
+
+      let imageUrl = null;
+
+      if (imageInput && imageInput.files && imageInput.files[0]) {
+        const file = imageInput.files[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        const filePath = `${restaurantData.id}/${fileName}`;
+
+        const { error: uploadError } = await sb.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (!uploadError) {
+          const { data: publicData } = sb.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          imageUrl = publicData.publicUrl;
+        }
+      }
 
       const { error } = await sb.from('products').insert({
         restaurant_id: restaurantData.id,
         category,
         name,
         description,
+        name_en, description_en,
+        name_ca, description_ca,
+        name_fr, description_fr,
+        name_it, description_it,
         price: price.toFixed(2),
         prep_time,
-        available: true
+        available: true,
+        allergens: selectedAllergens,
+        image_url: imageUrl
       });
 
       btn.disabled = false;
@@ -1043,26 +1321,13 @@
       document.getElementById('newProdName').value = '';
       document.getElementById('newProdDesc').value = '';
       document.getElementById('newProdPrice').value = '';
-      await fetchMenuProducts();
-    }
+      document.getElementById('newProdNameEn').value = ''; document.getElementById('newProdDescEn').value = '';
+      document.getElementById('newProdNameCa').value = ''; document.getElementById('newProdDescCa').value = '';
+      document.getElementById('newProdNameFr').value = ''; document.getElementById('newProdDescFr').value = '';
+      document.getElementById('newProdNameIt').value = ''; document.getElementById('newProdDescIt').value = '';
+      if (imageInput) imageInput.value = '';
+      document.querySelectorAll('input[name="newProdAllergen"]').forEach(cb => cb.checked = false);
 
-    async function cycleProductTime(prodId, currentTime) {
-      const t = parseInt(currentTime, 10) || 10;
-      const nextTime = t === 10 ? 20 : (t === 20 ? 30 : 10);
-      await sb.from('products').update({ prep_time: nextTime }).eq('id', prodId);
-      await fetchMenuProducts();
-    }
-
-    async function toggleProductAvailability(prodId, currentStatus) {
-      const { error } = await sb
-        .from('products')
-        .update({ available: !currentStatus })
-        .eq('id', prodId);
-
-      if (error) {
-        alert("No se pudo actualizar el estado.");
-        return;
-      }
       await fetchMenuProducts();
     }
 
@@ -1108,21 +1373,33 @@
       container.innerHTML = list.map(p => {
         const pt = parseInt(p.prep_time, 10) || 10;
         const timeBadge = pt >= 30 ? '🥘 ~30m' : (pt >= 20 ? '🍳 ~20m' : '⚡ ~10m');
+
+        const allergensBadges = (p.allergens || []).map(alg => {
+          let icon = '⚠️';
+          if (alg === 'Gluten') icon = '🌾';
+          if (alg === 'Lácteos') icon = '🥛';
+          if (alg === 'Huevos') icon = '🥚';
+          if (alg === 'Frutos secos') icon = '🥜';
+          if (alg === 'Pescado') icon = '🐟';
+          return `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-base-bg text-base-muted border border-base-border">${icon} ${alg}</span>`;
+        }).join(' ');
+
         return `
           <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${!p.available ? 'opacity-50' : ''}">
             <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-base-bg text-base-muted border border-base-border">
                   ${p.category}
                 </span>
                 <h3 class="text-sm font-bold text-base-text truncate">${p.name}</h3>
               </div>
               ${p.description ? `<p class="text-xs text-base-muted truncate mt-0.5">${p.description}</p>` : ''}
+              ${allergensBadges ? `<div class="flex flex-wrap gap-1 mt-1.5">${allergensBadges}</div>` : ''}
             </div>
 
             <div class="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-              <button onclick="cycleProductTime('${p.id}', ${pt})" title="Pulsar para cambiar tiempo estimado" class="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-base-bg hover:bg-base-border/60 text-base-text border border-base-border transition-all">
-                ${timeBadge}
+              <button onclick="openEditModal('${p.id}')" title="Editar plato e idiomas" class="text-xs bg-base-bg hover:bg-base-border text-base-text font-bold px-2.5 py-1 rounded-xl border border-base-border transition-all">
+                ✏️ Editar
               </button>
 
               <button onclick="editProductPrice('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price})" title="Cambiar precio" class="text-sm font-black text-primary-dark hover:underline px-2">
@@ -1146,9 +1423,73 @@
       }).join('');
     }
 
-    // ==========================================
-    // 7. VISTA: FIDELIZACIÓN
-    // ==========================================
+    function openEditModal(prodId) {
+      const p = menuProducts.find(item => String(item.id) === String(prodId));
+      if (!p) return;
+
+      document.getElementById('editProdId').value = p.id;
+      document.getElementById('editNameEs').value = p.name || '';
+      document.getElementById('editDescEs').value = p.description || '';
+      document.getElementById('editNameEn').value = p.name_en || '';
+      document.getElementById('editDescEn').value = p.description_en || '';
+      document.getElementById('editNameCa').value = p.name_ca || '';
+      document.getElementById('editDescCa').value = p.description_ca || '';
+      document.getElementById('editNameFr').value = p.name_fr || '';
+      document.getElementById('editDescFr').value = p.description_fr || '';
+      document.getElementById('editNameIt').value = p.name_it || '';
+      document.getElementById('editDescIt').value = p.description_it || '';
+
+      const currentAllergens = p.allergens || [];
+      document.querySelectorAll('input[name="editAllergen"]').forEach(cb => {
+        cb.checked = currentAllergens.includes(cb.value);
+      });
+
+      document.getElementById('editProductModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editProductModal').classList.add('hidden');
+    }
+
+    async function saveEditedProduct() {
+      const id = document.getElementById('editProdId').value;
+      const name = document.getElementById('editNameEs').value.trim();
+      const description = document.getElementById('editDescEs').value.trim();
+      const name_en = document.getElementById('editNameEn').value.trim();
+      const description_en = document.getElementById('editDescEn').value.trim();
+      const name_ca = document.getElementById('editNameCa').value.trim();
+      const description_ca = document.getElementById('editDescCa').value.trim();
+      const name_fr = document.getElementById('editNameFr').value.trim();
+      const description_fr = document.getElementById('editDescFr').value.trim();
+      const name_it = document.getElementById('editNameIt').value.trim();
+      const description_it = document.getElementById('editDescIt').value.trim();
+
+      const selectedAllergens = Array.from(document.querySelectorAll('input[name="editAllergen"]:checked')).map(cb => cb.value);
+
+      if (!name) {
+        alert("El nombre en español es obligatorio.");
+        return;
+      }
+
+      const { error } = await sb.from('products').update({
+        name, description,
+        name_en, description_en,
+        name_ca, description_ca,
+        name_fr, description_fr,
+        name_it, description_it,
+        allergens: selectedAllergens
+      }).eq('id', id);
+
+      if (error) {
+        alert("Error al actualizar el producto: " + error.message);
+        return;
+      }
+
+      closeEditModal();
+      await fetchMenuProducts();
+      alert("¡Plato actualizado con éxito!");
+    }
+
     function renderFidelizacion() {
       const container = document.getElementById('loyaltyList');
       const query = (document.getElementById('phoneSearchInput')?.value || '').trim();
@@ -1213,6 +1554,107 @@
     }
 
     checkAuthAndBoot();
+
+    function renderEstadisticas() {
+      const filterType = document.getElementById('weekFilterSelect')?.value || 'all';
+      const now = new Date();
+      const filteredOrders = allHistoricalOrders.filter(ord => {
+        if (!ord.created_at) return false;
+        const ordDate = new Date(ord.created_at);
+
+        if (filterType === 'this_week') {
+          const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+          firstDayOfWeek.setHours(0,0,0,0);
+          return ordDate >= firstDayOfWeek;
+        } else if (filterType === 'last_week') {
+          const lastWeekStart = new Date(now.setDate(now.getDate() - now.getDay() - 6));
+          lastWeekStart.setHours(0,0,0,0);
+          const lastWeekEnd = new Date(now.setDate(now.getDate() - now.getDay() + 7));
+          lastWeekEnd.setHours(23,59,59,999);
+          return ordDate >= lastWeekStart && ordDate <= lastWeekEnd;
+        }
+        return true;
+      });
+
+      let totalRevenue = 0;
+      const productCounts = {};
+      const timeSlots = {};
+
+      filteredOrders.forEach(ord => {
+        totalRevenue += parseFloat(ord.total_amount || 0);
+
+        if (ord.created_at) {
+          const date = new Date(ord.created_at);
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+          const slotMinutes = minutes < 30 ? '00' : '30';
+          const endHours = minutes < 30 ? hours : hours + 1;
+          const slotEndMinutes = minutes < 30 ? '30' : '00';
+          
+          const timeLabel = `${String(hours).padStart(2, '0')}:${slotMinutes} - ${String(endHours).padStart(2, '0')}:${slotEndMinutes}`;
+          timeSlots[timeLabel] = (timeSlots[timeLabel] || 0) + 1;
+        }
+
+        const items = ord.items || [];
+        items.forEach(it => {
+          if (ord.is_waiter_call) return;
+          const name = it.name;
+          const qty = parseInt(it.qty || 1, 10);
+          productCounts[name] = (productCounts[name] || 0) + qty;
+        });
+      });
+
+      document.getElementById('statTotalRevenue').innerText = `${totalRevenue.toFixed(2)} €`;
+      document.getElementById('statTotalOrders').innerText = filteredOrders.length;
+      document.getElementById('statTotalLoyalty').innerText = loyaltyCards.length;
+
+      const slotsContainer = document.getElementById('statTimeSlots');
+      const sortedSlots = Object.entries(timeSlots).sort((a, b) => a[0].localeCompare(b[0]));
+
+      if (sortedSlots.length === 0) {
+        slotsContainer.innerHTML = `<p class="text-center py-6 text-xs text-base-muted">No hay datos suficientes para este periodo.</p>`;
+      } else {
+        const maxSlotCount = Math.max(...Object.values(timeSlots), 1);
+        slotsContainer.innerHTML = sortedSlots.map(([slot, count]) => {
+          const percentage = Math.max(8, Math.round((count / maxSlotCount) * 100));
+          return `
+            <div class="space-y-1">
+              <div class="flex justify-between items-center font-bold text-base-text">
+                <span>🕒 ${slot}</span>
+                <span class="text-primary-dark font-extrabold">${count} comandas</span>
+              </div>
+              <div class="w-full bg-base-bg rounded-xl h-3 overflow-hidden border border-base-border p-0.5">
+                <div class="bg-primary h-full rounded-lg transition-all duration-500 shadow-inner" style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const topContainer = document.getElementById('statTopProducts');
+      const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+      if (sortedProducts.length === 0) {
+        topContainer.innerHTML = `<p class="text-center py-6 text-xs text-base-muted">No hay platos registrados.</p>`;
+        return;
+      }
+
+      const maxProductCount = Math.max(...sortedProducts.map(p => p[1]), 1);
+      topContainer.innerHTML = sortedProducts.map(([name, count], index) => {
+        const percentage = Math.max(10, Math.round((count / maxProductCount) * 100));
+        return `
+          <div class="space-y-1">
+            <div class="flex justify-between items-center font-bold text-base-text">
+              <span class="truncate pr-2"><strong class="text-primary-dark">#${index + 1}</strong> ${name}</span>
+              <span class="font-black text-primary-dark shrink-0">${count} uds</span>
+            </div>
+            <div class="w-full bg-base-bg rounded-xl h-3 overflow-hidden border border-base-border p-0.5">
+              <div class="bg-base-text h-full rounded-lg transition-all duration-500 shadow-inner" style="width: ${percentage}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   </script>
 </body>
 </html>

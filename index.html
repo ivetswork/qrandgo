@@ -207,10 +207,27 @@
         <span class="font-extrabold text-xs text-base-muted uppercase tracking-wider">Total a pagar</span>
         <span id="billGrandTotal" class="text-xl font-black text-primary">0.00 €</span>
       </div>
+<div class="border-t border-base-border pt-3 flex justify-between items-center">
+        <span class="font-extrabold text-xs text-base-muted uppercase tracking-wider">Total a pagar</span>
+        <span id="billGrandTotal" class="text-xl font-black text-primary">0.00 €</span>
+      </div>
+
+      <!-- NUEVOS BOTONES PARA PEDIR LA CUENTA -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button id="payCardBtn" onclick="requestBill('Tarjeta 💳')" class="bg-base-text hover:bg-black text-base-card font-bold py-3 px-2 rounded-xl transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5 shadow-sm">
+          <span>💳</span>
+          <span>Pedir (Tarjeta)</span>
+        </button>
+        <button id="payCashBtn" onclick="requestBill('Efectivo 💵')" class="bg-base-text hover:bg-black text-base-card font-bold py-3 px-2 rounded-xl transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5 shadow-sm">
+          <span>💵</span>
+          <span>Pedir (Efectivo)</span>
+        </button>
+      </div>
 
       <button onclick="closeBillModal()" class="w-full bg-base-bg hover:bg-base-border/50 text-base-text font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-wider">
         Volver a la carta
       </button>
+      
     </div>
   </div>
 
@@ -262,9 +279,6 @@
   </div>
 
   <script>
-    // ==========================================
-    // CONFIGURACIÓN DE SUPABASE (SW&Go / QR&Go)
-    // ==========================================
     const SUPABASE_URL = "https://admoytjzbhdngkcafhua.supabase.co";
     const SUPABASE_KEY = "sb_publishable_9KG1_KEF4Ik4SpmfTdEUqA_7vRD5Cq0";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -349,9 +363,6 @@
       }
     };
 
-    // ==========================================
-    // 1. VALIDACIÓN DE MESA Y SEGURIDAD 30 MINUTOS
-    // ==========================================
     function showLockScreen(title, message) {
       document.body.innerHTML = `
         <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F9FAFB; padding: 20px; font-family: 'Plus Jakarta Sans', sans-serif; text-align: center;">
@@ -384,8 +395,6 @@
       restaurantData = data.restaurant;
       currentSessionId = data.session_id;
 
-      // Aplicar color corporativo del restaurante
-      // Consultar el color actualizado directamente desde restaurants
       const { data: brandRow } = await sb
         .from('restaurants')
         .select('primary_color')
@@ -394,7 +403,6 @@
 
       applyBrandTheme(brandRow?.primary_color || restaurantData.primary_color);
 
-      // Cambiar el color en vivo si el administrador lo modifica en el panel
       sb.channel('brand-theme-' + restaurantData.id)
         .on('postgres_changes', {
           event: 'UPDATE',
@@ -405,6 +413,34 @@
           if (payload.new?.primary_color) {
             applyBrandTheme(payload.new.primary_color);
           }
+        })
+        .subscribe();
+
+      sb.channel('client-products-' + restaurantData.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'products',
+          filter: `restaurant_id=eq.${restaurantData.id}`
+        }, (payload) => {
+          const prod = payload.new;
+          const oldProd = payload.old;
+
+          if (payload.eventType === 'INSERT') {
+            if (!products.some(p => String(p.id) === String(prod.id))) {
+              products.push(prod);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const index = products.findIndex(p => String(p.id) === String(prod.id));
+            if (index !== -1) {
+              products[index] = prod;
+            } else {
+              products.push(prod);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            products = products.filter(p => String(p.id) !== String(oldProd.id));
+          }
+          renderCurrentView();
         })
         .subscribe();
 
@@ -469,15 +505,11 @@
         .subscribe();
     }
 
-    // ==========================================
-    // 2. CARGA Y RENDERIZADO DE PRODUCTOS
-    // ==========================================
     async function loadProducts() {
       const { data, error } = await sb
         .from('products')
         .select('*')
-        .eq('restaurant_id', restaurantData.id)
-        .eq('available', true);
+        .eq('restaurant_id', restaurantData.id);
 
       if (error) {
         document.getElementById('loading').innerText = 'No se pudo cargar la carta. Verifica la conexión.';
@@ -554,6 +586,7 @@
         const qty = cart[id] || 0;
         const pt = parseInt(p.prep_time, 10) || 10;
         const isDrink = (p.category || '').toLowerCase() === 'bebidas';
+        const isAvailable = p.available !== false;
 
         const timeTag = isDrink
           ? ''
@@ -565,8 +598,38 @@
                     : 'bg-base-bg text-base-muted border border-base-border')
             }">${pt >= 30 ? '🥘 ~30 min' : (pt >= 20 ? '🍳 ~20 min' : '⚡ ~10 min')}</span>`;
 
+        const allergensList = (p.allergens || []).map(alg => {
+          let icon = '⚠️';
+          if (alg === 'Gluten') icon = '🌾';
+          if (alg === 'Lácteos') icon = '🥛';
+          if (alg === 'Huevos') icon = '🥚';
+          if (alg === 'Frutos secos') icon = '🥜';
+          if (alg === 'Pescado') icon = '🐟';
+          
+          return `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-base-bg text-base-muted border border-base-border" title="${alg}">
+            ${icon} ${alg}
+          </span>`;
+        }).join(' ');
+
+        let actionHtml = '';
+        if (!isAvailable) {
+          actionHtml = `<span class="text-[11px] font-extrabold px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200">Agotado</span>`;
+        } else if (qty > 0) {
+          actionHtml = `
+            <button onclick="modifyQty('${id}', -1, event)" class="w-8 h-8 rounded-xl bg-base-bg text-base-text font-extrabold flex items-center justify-center text-sm hover:bg-base-border transition-all active:scale-90 shadow-sm">−</button>
+            <span class="text-xs font-black text-base-text w-5 text-center">${qty}</span>
+            <button onclick="modifyQty('${id}', 1, event)" class="w-8 h-8 rounded-xl bg-base-text text-base-card font-extrabold flex items-center justify-center text-sm hover:bg-black transition-all active:scale-90 shadow-md">+</button>
+          `;
+        } else {
+          actionHtml = `
+            <button onclick="modifyQty('${id}', 1, event)" class="bg-base-card hover:bg-primary hover:text-white text-base-text border border-base-border hover:border-primary font-bold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+              ${TRANSLATIONS[currentLang]?.anadir || '+ Añadir'}
+            </button>
+          `;
+        }
+
         return `
-          <div class="bg-base-card rounded-2xl p-3 flex gap-3.5 items-center border border-base-border shadow-sm hover:border-base-border/80 hover:shadow-md transition-all duration-200">
+          <div class="bg-base-card rounded-2xl p-3 flex gap-3.5 items-center border border-base-border shadow-sm transition-all duration-200 ${!isAvailable ? 'opacity-60 bg-base-bg/50' : ''}">
             ${img ? `
               <div class="relative overflow-hidden rounded-xl flex-shrink-0">
                 <img src="${img}" alt="${nombre}" class="w-20 h-20 object-cover bg-base-bg">
@@ -576,31 +639,23 @@
             <div class="flex-1 min-w-0">
               <h3 class="font-bold text-xs sm:text-sm text-base-text leading-snug line-clamp-2 tracking-tight">${nombre}</h3>
               ${desc ? `<p class="text-[11px] text-base-muted truncate my-0.5 leading-relaxed">${desc}</p>` : ''}
+              
               <div class="flex items-center gap-2 mt-1">
                 <p class="font-black text-primary-dark text-xs sm:text-sm">${precio} €</p>
                 ${timeTag}
               </div>
+
+              ${allergensList ? `<div class="flex flex-wrap gap-1 mt-1.5">${allergensList}</div>` : ''}
             </div>
             
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              ${qty > 0 ? `
-                <button onclick="modifyQty('${id}', -1, event)" class="w-8 h-8 rounded-xl bg-base-bg text-base-text font-extrabold flex items-center justify-center text-sm hover:bg-base-border transition-all active:scale-90 shadow-sm">−</button>
-                <span class="text-xs font-black text-base-text w-5 text-center">${qty}</span>
-                <button onclick="modifyQty('${id}', 1, event)" class="w-8 h-8 rounded-xl bg-base-text text-base-card font-extrabold flex items-center justify-center text-sm hover:bg-black transition-all active:scale-90 shadow-md">+</button>
-              ` : `
-                <button onclick="modifyQty('${id}', 1, event)" class="bg-base-card hover:bg-primary hover:text-white text-base-text border border-base-border hover:border-primary font-bold px-3 py-2 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
-                  ${TRANSLATIONS[currentLang]?.anadir || '+ Añadir'}
-                </button>
-              `}
+              ${actionHtml}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    // ==========================================
-    // 3. CARRITO Y ENVÍO DE PEDIDOS A SUPABASE
-    // ==========================================
     function triggerFlyAnimation(event) {
       if (!event) return;
       const dot = document.createElement('div');
@@ -654,6 +709,7 @@
       });
       const bar = document.getElementById('cartBar');
       if (count > 0) {
+        bar.classList.add('hidden'); // Fix visibility toggle logic
         bar.classList.remove('hidden');
         document.getElementById('cartCount').innerText = `${count} producto${count > 1 ? 's' : ''}`;
         document.getElementById('cartTotal').innerText = `${total.toFixed(2)} €`;
@@ -910,10 +966,52 @@
         alert('No se pudo enviar el aviso. Inténtalo de nuevo.');
       }
     }
+    async function requestBill(paymentMethod) {
+      const valid = await verifyActiveSessionBeforeAction();
+      if (!valid) return;
 
-    // ==========================================
-    // 4. CUENTA ACUMULADA EN TIEMPO REAL
-    // ==========================================
+      const currentTotal = document.getElementById('billGrandTotal').innerText;
+      if (currentTotal === '0.00 €') {
+        alert("Aún no tienes consumos acumulados en esta mesa.");
+        return;
+      }
+
+      if (!confirm(`¿Pedir la cuenta (${currentTotal}) para pagar con ${paymentMethod}?`)) return;
+
+      const btnCard = document.getElementById('payCardBtn');
+      const btnCash = document.getElementById('payCashBtn');
+      if (btnCard) btnCard.disabled = true;
+      if (btnCash) btnCash.disabled = true;
+
+      try {
+        const sessionId = await ensureTableSession();
+        const { error } = await sb.from('orders').insert({
+          restaurant_id: restaurantData.id,
+          session_id: sessionId,
+          table_number: tableData.table_number,
+          items: [{ 
+            name: `🧾 PEDIR CUENTA (${paymentMethod}) • ${currentTotal}`, 
+            category: 'Bebidas', 
+            qty: 1, 
+            price: 0 
+          }],
+          total_amount: 0,
+          is_waiter_call: true,
+          bar_status: 'pending'
+        });
+
+        if (error) throw error;
+
+        alert(`¡Cuenta solicitada (${paymentMethod})! Un camarero acudirá enseguida a la ${tableData.table_number}.`);
+        closeBillModal();
+      } catch (err) {
+        alert('No se pudo solicitar la cuenta. Inténtalo de nuevo.');
+      } finally {
+        if (btnCard) btnCard.disabled = false;
+        if (btnCash) btnCash.disabled = false;
+      }
+    }
+
     let billRealtimeChannel = null;
 
     async function refreshBillData() {
@@ -1019,9 +1117,6 @@
       }
     }
 
-    // ==========================================
-    // 5. TARJETA DE FIDELIZACIÓN
-    // ==========================================
     async function saveCustomerPhone() {
       const rawPhone = document.getElementById('loyaltyPhoneInput').value.replace(/\s+/g, '').trim();
       if (rawPhone.length < 6) {
@@ -1138,9 +1233,6 @@
       document.getElementById('loyaltyModal').classList.add('hidden');
     }
 
-    // ==========================================
-    // 6. IDIOMAS Y FILTROS DE CATEGORÍA
-    // ==========================================
     function changeLanguage(lang) {
       currentLang = lang;
       const t = TRANSLATIONS[lang] || TRANSLATIONS.es;
@@ -1188,6 +1280,29 @@
     }
 
     initApp();
+
+    setInterval(async () => {
+      if (!tableData || !tableData.table_id) return;
+      
+      const { data, error } = await sb
+        .from('tables')
+        .select('active_token, token_expires_at')
+        .eq('id', tableData.table_id)
+        .single();
+
+      if (error || !data) return;
+
+      const savedToken = localStorage.getItem(`qrandgo_token_${tableData.table_id}`);
+      const isExpired = new Date(data.token_expires_at) < new Date();
+      const tokenMismatch = data.active_token !== savedToken;
+
+      if (isExpired || tokenMismatch) {
+        showLockScreen(
+          "Sesión finalizada",
+          "La mesa ha superado el tiempo de seguridad o ha sido cerrada. Vuelve a escanear el QR."
+        );
+      }
+    }, 60000);
   </script>
 </body>
 </html>
