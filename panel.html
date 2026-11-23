@@ -732,7 +732,8 @@
     }
 
     function fillSettingsForm() {
-      document.getElementById('inputTotalTables').value = tablesList.length || 10;
+      // Usa el total de mesas reales de la tabla o un campo específico si lo hubiera
+      document.getElementById('inputTotalTables').value = restaurantData.total_tables || tablesList.length || 10;
       document.getElementById('inputStampsReq').value = restaurantData.stamps_required || 8;
       document.getElementById('inputRewardDesc').value = restaurantData.reward_description || '';
       const color = restaurantData.primary_color || '#12B89B';
@@ -2004,6 +2005,10 @@
 
         if (error) throw error;
         restaurantData = updated;
+        if (error) throw error;
+        restaurantData = updated;
+        rouletteEditorInitialized = false;
+        renderRouletteEditor();
         alert("¡Los 6 premios de la ruleta se han guardado correctamente!");
       } catch (err) {
         alert("Error al guardar la ruleta: " + err.message);
@@ -2013,20 +2018,14 @@
       }
     }
 
+    let rouletteEditorInitialized = false;
+
     function renderFidelizacion() {
-      renderRouletteEditor();
-      const container = document.getElementById('loyaltyList');
-      const query = (document.getElementById('phoneSearchInput')?.value || '').trim();
-      const required = restaurantData.stamps_required || 8;
-
-      const filtered = query
-        ? loyaltyCards.filter(c => c.phone_number.includes(query))
-        : loyaltyCards;
-
-      if (filtered.length === 0) {
-        container.innerHTML = `<p class="col-span-full text-center py-8 text-xs text-base-muted">No hay tarjetas registradas con ese teléfono.</p>`;
-        return;
+      if (!rouletteEditorInitialized) {
+        renderRouletteEditor();
+        rouletteEditorInitialized = true;
       }
+      const container = document.getElementById('loyaltyList');
 
       container.innerHTML = filtered.map(card => {
         const canRedeem = card.stamps_count >= required;
