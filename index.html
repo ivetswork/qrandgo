@@ -907,19 +907,18 @@
 
         if (error) throw error;
 
+        // Limpiar carrito y recargar la página al instante sin alertas bloqueantes
         cart = {};
         document.getElementById('orderNotes').value = '';
         updateCartUI();
-        renderCurrentView();
         closeModal();
-        alert('¡Comanda enviada a preparación con éxito!');
-        setTimeout(() => {
-          location.reload(); // Recarga la página automáticamente tras 1 segundo
-        }, 1000);
+        
+        // Recarga limpia y directa para que la mesa quede lista
+        location.reload();
+
       } catch (err) {
         console.error(err);
         alert('Hubo un error al enviar el pedido. Por favor, reinténtalo.');
-      } finally {
         btn.disabled = false;
         btn.innerText = TRANSLATIONS[currentLang]?.enviarCocina || 'Enviar a Preparación';
       }
