@@ -188,12 +188,26 @@
 
         if (restError) throw restError;
 
-        succEl.innerText = "¡Restaurante creado con éxito! Entrando al panel...";
-        succEl.classList.remove('hidden');
+        document.querySelector('form').innerHTML = `
+          <div class="text-center space-y-4 py-6">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-xs">
+              ✓
+            </div>
+            <h2 class="font-serif-title text-2xl font-bold text-base-text">¡Usuario registrado con éxito!</h2>
+            <p class="text-xs text-base-muted leading-relaxed">
+              Tu restaurante <strong>${name}</strong> ya está creado. Te redirigimos al panel para que inicies sesión con tu correo y contraseña...
+            </p>
+            <div class="pt-2">
+              <a href="panel.html" class="inline-block w-full bg-primary hover:bg-primary-dark text-white font-extrabold text-xs py-3.5 px-6 rounded-xl uppercase tracking-wider transition-all shadow-xs">
+                Ir al Panel Ahora →
+              </a>
+            </div>
+          </div>
+        `;
 
         setTimeout(() => {
           window.location.href = 'panel.html';
-        }, 1200);
+        }, 3000);
 
       } catch (err) {
         errEl.innerText = "Error: " + (err.message || "No se pudo completar el registro.");

@@ -756,6 +756,7 @@
       btn.innerText = "Guardando...";
 
       try {
+        // Aseguramos la actualización directa por el id numérico del restaurante
         const { data: updatedRest, error: restErr } = await sb
           .from('restaurants')
           .update({
