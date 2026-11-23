@@ -189,6 +189,37 @@
 
       <!-- VISTA 4: GESTOR DE CARTA -->
       <div id="view-carta" class="hidden max-w-5xl mx-auto space-y-5">
+        <!-- BLOQUE GESTIÓN DE CATEGORÍAS -->
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-base-border pb-3">
+            <div>
+              <h2 class="font-serif-title text-lg font-bold text-base-text">📂 Categorías de la Carta</h2>
+              <p class="text-xs text-base-muted">Crea categorías propias y elige si sus pedidos van a Cocina o a Barra.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 text-xs items-end">
+            <div class="sm:col-span-5">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Nueva Categoría *</label>
+              <input type="text" id="newCatName" placeholder="Ej. Burgers, Cócteles, Pasta..." class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Destino de Preparación</label>
+              <select id="newCatStation" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
+                <option value="kitchen">👨‍🍳 Cocina</option>
+                <option value="bar">🍸 Barra</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3">
+              <button id="addCatBtn" onclick="createCategory()" class="w-full bg-base-text hover:bg-black text-base-card font-extrabold text-xs py-2.5 px-4 rounded-xl transition-all active:scale-95 uppercase tracking-wider">
+                + Crear Categoría
+              </button>
+            </div>
+          </div>
+
+          <div id="categoriesTagsList" class="flex flex-wrap gap-2 pt-1"></div>
+        </div>
+
         <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
           <div class="flex items-center justify-between border-b border-base-border pb-3">
             <div>
@@ -239,9 +270,9 @@
             <div class="sm:col-span-6">
               <label class="block text-[10px] font-bold text-base-muted uppercase tracking-wider mb-1">Tiempo estimado</label>
               <select id="newProdTime" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
-                <option value="10">⚡ ~10 min</option>
-                <option value="20">🍳 ~20 min</option>
-                <option value="30">🥘 ~30 min</option>
+                <option value="10">~10 min</option>
+                <option value="20">~20 min</option>
+                <option value="30">~30 min</option>
               </select>
             </div>
 
@@ -300,16 +331,7 @@
 
         <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs w-full sm:w-auto">
-              <button onclick="setMenuCatFilter('Todas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card transition-all">Todas</button>
-              <button onclick="setMenuCatFilter('Entrantes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Entrantes</button>
-              <button onclick="setMenuCatFilter('Para picar', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Para picar</button>
-              <button onclick="setMenuCatFilter('Arroces', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Arroces</button>
-              <button onclick="setMenuCatFilter('Carnes', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Carnes</button>
-              <button onclick="setMenuCatFilter('Pescados', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Pescados</button>
-              <button onclick="setMenuCatFilter('Bebidas', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Bebidas</button>
-              <button onclick="setMenuCatFilter('Postres', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all">Postres</button>
-            </div>
+            <div id="menuCatFilterBar" class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs w-full sm:w-auto"></div>
 
             <div class="relative w-full sm:w-56">
               <input type="text" id="menuSearchInput" oninput="renderCartaManager()" placeholder="Buscar plato..." class="w-full bg-base-bg border border-base-border rounded-xl py-2 pl-8 pr-3 text-xs font-bold outline-none focus:border-primary text-base-text">
@@ -470,6 +492,10 @@
 
       <div class="space-y-3 text-xs">
         <div>
+          <label class="block font-bold text-base-muted uppercase tracking-wider mb-1">Categoría *</label>
+          <select id="editProdCat" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary"></select>
+        </div>
+        <div>
           <label class="block font-bold text-base-muted uppercase tracking-wider mb-1">Nombre (Español) *</label>
           <input type="text" id="editNameEs" class="w-full bg-base-bg border border-base-border rounded-xl p-2.5 font-bold text-base-text outline-none focus:border-primary">
         </div>
@@ -526,6 +552,18 @@
     let currentOrders = [];
     let loyaltyCards = [];
     let menuProducts = [];
+    let restaurantCategories = [];
+
+    const DEFAULT_CATEGORIES = [
+      { id: null, name: 'Entrantes', station: 'kitchen', isDefault: true },
+      { id: null, name: 'Para picar', station: 'kitchen', isDefault: true },
+      { id: null, name: 'Arroces', station: 'kitchen', isDefault: true },
+      { id: null, name: 'Carnes', station: 'kitchen', isDefault: true },
+      { id: null, name: 'Pescados', station: 'kitchen', isDefault: true },
+      { id: null, name: 'Bebidas', station: 'bar', isDefault: true },
+      { id: null, name: 'Postres', station: 'bar', isDefault: true },
+      { id: null, name: 'Vinos', station: 'bar', isDefault: true }
+    ];
     let currentView = 'cocina';
     let currentFilter = 'all';
     let menuCatFilter = 'Todas';
@@ -654,6 +692,7 @@
 
       await loadTables();
       fillSettingsForm();
+      await fetchCategories();
       await fetchActiveOrders();
       await fetchMenuProducts();
       await fetchLoyaltyCards();
@@ -763,6 +802,156 @@
       renderCurrentView();
     }
 
+    async function fetchCategories() {
+      const { data } = await sb
+        .from('restaurant_categories')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .order('created_at', { ascending: true });
+
+      const map = new Map();
+      // Si el restaurante ya tiene categorías guardadas, usarlas; si no, inicializar con las básicas
+      if (data && data.length > 0) {
+        data.forEach(c => {
+          map.set(c.name.trim().toLowerCase(), { id: c.id, name: c.name.trim(), station: c.station || 'kitchen', isDefault: false });
+        });
+      } else {
+        DEFAULT_CATEGORIES.forEach(c => {
+          map.set(c.name.toLowerCase(), { ...c });
+        });
+      }
+
+      // Asegurar también cualquier categoría ya presente en productos existentes
+      menuProducts.forEach(p => {
+        const raw = String(p.category || '').trim();
+        const key = raw.toLowerCase();
+        if (raw && !map.has(key)) {
+          const isBar = BAR_CATEGORIES.some(bc => key.includes(bc));
+          map.set(key, { id: null, name: raw, station: isBar ? 'bar' : 'kitchen', isDefault: true });
+        }
+      });
+
+      restaurantCategories = Array.from(map.values());
+      syncCategoriesUI();
+    }
+
+    function syncCategoriesUI() {
+      // 1. Rellenar <select id="newProdCat"> y <select id="editProdCat">
+      const optionsHtml = restaurantCategories.map(c =>
+        `<option value="${c.name}">${c.station === 'bar' ? '🍸' : '👨‍🍳'} ${c.name}</option>`
+      ).join('');
+
+      const newCatSelect = document.getElementById('newProdCat');
+      if (newCatSelect) {
+        const prev = newCatSelect.value;
+        newCatSelect.innerHTML = optionsHtml;
+        if (prev && restaurantCategories.some(c => c.name === prev)) newCatSelect.value = prev;
+      }
+
+      const editCatSelect = document.getElementById('editProdCat');
+      if (editCatSelect) {
+        const prevEdit = editCatSelect.value;
+        editCatSelect.innerHTML = optionsHtml;
+        if (prevEdit && restaurantCategories.some(c => c.name === prevEdit)) editCatSelect.value = prevEdit;
+      }
+
+      // 2. Pintar etiquetas de categorías creadas en el gestor
+      const tagsContainer = document.getElementById('categoriesTagsList');
+      if (tagsContainer) {
+        tagsContainer.innerHTML = restaurantCategories.map(c => {
+          const isBar = c.station === 'bar';
+          return `
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+              isBar ? 'bg-amber-50 text-amber-900 border-amber-200' : 'bg-primary-light text-primary-dark border-primary/20'
+            }">
+              <span>${isBar ? '🍸 Barra' : '👨‍🍳 Cocina'}</span>
+              <span class="text-base-text font-black">• ${c.name}</span>
+              ${c.id ? `<button onclick="deleteCategory('${c.id}', '${c.name.replace(/'/g, "\'")}')" title="Eliminar categoría" class="ml-1 text-base-muted hover:text-red-600 font-black">✕</button>` : ''}
+            </span>
+          `;
+        }).join('');
+      }
+
+      // 3. Pintar barra de filtros de categorías en el listado de platos
+      const filterBar = document.getElementById('menuCatFilterBar');
+      if (filterBar) {
+        const allCats = ['Todas', ...restaurantCategories.map(c => c.name)];
+        filterBar.innerHTML = allCats.map(catName => {
+          const active = menuCatFilter.toLowerCase() === catName.toLowerCase();
+          const safe = catName.replace(/'/g, "\'");
+          return `
+            <button onclick="setMenuCatFilter('${safe}', this)" class="menu-cat-btn px-3 py-1.5 rounded-xl font-bold ${
+              active ? 'bg-base-text text-base-card' : 'bg-base-bg text-base-muted hover:text-base-text'
+            } transition-all flex-shrink-0">
+              ${catName}
+            </button>
+          `;
+        }).join('');
+      }
+    }
+
+    async function createCategory() {
+      const nameInput = document.getElementById('newCatName');
+      const stationSelect = document.getElementById('newCatStation');
+      const name = nameInput.value.trim();
+      const station = stationSelect.value;
+
+      if (!name) {
+        alert("Escribe un nombre para la nueva categoría.");
+        return;
+      }
+
+      if (restaurantCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        alert("Esa categoría ya existe en tu carta.");
+        return;
+      }
+
+      const btn = document.getElementById('addCatBtn');
+      btn.disabled = true;
+      btn.innerText = "Guardando...";
+
+      try {
+        // Si es la primera vez que el restaurante guarda categorías personalizadas, migrar también las básicas actuales
+        const hasSavedCustom = restaurantCategories.some(c => c.id !== null);
+        if (!hasSavedCustom) {
+          const seedRows = restaurantCategories.map(c => ({
+            restaurant_id: restaurantData.id,
+            name: c.name,
+            station: c.station
+          }));
+          await sb.from('restaurant_categories').insert(seedRows);
+        }
+
+        const { error } = await sb.from('restaurant_categories').insert({
+          restaurant_id: restaurantData.id,
+          name,
+          station
+        });
+
+        if (error) throw error;
+
+        nameInput.value = '';
+        await fetchCategories();
+        // Seleccionar la recién creada en el formulario de nuevo producto
+        const newCatSelect = document.getElementById('newProdCat');
+        if (newCatSelect) newCatSelect.value = name;
+        alert(`Categoría "${name}" creada y asignada a ${station === 'bar' ? 'Barra 🍸' : 'Cocina 👨‍🍳'}.`);
+      } catch (err) {
+        alert("Error al crear categoría: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "+ Crear Categoría";
+      }
+    }
+
+    async function deleteCategory(catId, catName) {
+      if (!confirm(`¿Eliminar la categoría "${catName}"? (Los platos existentes conservarán su nombre de categoría hasta que los edites)`)) return;
+      await sb.from('restaurant_categories').delete().eq('id', catId);
+      if (menuCatFilter.toLowerCase() === catName.toLowerCase()) menuCatFilter = 'Todas';
+      await fetchCategories();
+      renderCartaManager();
+    }
+
     async function fetchMenuProducts() {
       const { data } = await sb
         .from('products')
@@ -773,6 +962,7 @@
       menuProducts = data || [];
       const badge = document.getElementById('totalProductsBadge');
       if (badge) badge.innerText = `${menuProducts.length} platos`;
+      await fetchCategories();
       if (currentView === 'carta') renderCartaManager();
     }
 
@@ -831,7 +1021,11 @@
       await fetchMenuProducts();
     }
 
+    let kitchenSubMode = 'tables';
+    let barSubMode = 'tables';
+
     function setKitchenSubView(mode) {
+      kitchenSubMode = mode;
       const btnT = document.getElementById('btnCocinaTables');
       const btnB = document.getElementById('btnCocinaBatch');
       if (btnT && btnB) {
@@ -846,6 +1040,7 @@
     }
 
     function setBarSubView(mode) {
+      barSubMode = mode;
       const btnT = document.getElementById('btnBarraTables');
       const btnB = document.getElementById('btnBarraBatch');
       if (btnT && btnB) {
@@ -876,6 +1071,7 @@
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => { loadTables(); fetchActiveOrders(); })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchMenuProducts())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_categories' }, () => fetchCategories())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_cards' }, () => fetchLoyaltyCards())
         .subscribe();
 
@@ -981,13 +1177,20 @@
 
     const BAR_CATEGORIES = ['bebidas', 'bebida', 'vinos', 'vino', 'postres', 'postre', 'bar', 'cafes', 'cafés'];
 
+    function isCategoryForBar(catName) {
+      const catLower = String(catName || '').trim().toLowerCase();
+      const configured = restaurantCategories.find(c => c.name.toLowerCase() === catLower);
+      if (configured) return configured.station === 'bar';
+      return BAR_CATEGORIES.some(bc => catLower.includes(bc));
+    }
+
     function parseKitchenCategories(order) {
       const res = { tapas: [], platos: [] };
       if (order.is_waiter_call) return res;
 
       (order.items || []).forEach((it, idx) => {
+        if (isCategoryForBar(it.category)) return;
         const cat = String(it.category || '').trim().toLowerCase();
-        if (BAR_CATEGORIES.some(bc => cat.includes(bc))) return;
 
         if (cat.includes('tapa') || cat.includes('picar') || cat.includes('entrante')) {
           res.tapas.push({ originalIndex: idx, qty: it.qty, name: it.name });
@@ -999,25 +1202,23 @@
     }
 
     function parseBarDrinks(order) {
-  const drinks = [];
-  if (order.is_waiter_call) {
-    // Lee el mensaje real enviado desde el móvil (ya sea llamada normal o petición de cuenta con tarjeta/efectivo)
-    const callMessage = (order.items && order.items[0] && order.items[0].name)
-      ? order.items[0].name
-      : '🔔 LLAMADA AL CAMARERO';
+      const drinks = [];
+      if (order.is_waiter_call) {
+        const callMessage = (order.items && order.items[0] && order.items[0].name)
+          ? order.items[0].name
+          : '🔔 LLAMADA AL CAMARERO';
 
-    drinks.push({ originalIndex: 0, qty: '', name: callMessage });
-    return drinks;
-  }
+        drinks.push({ originalIndex: 0, qty: '', name: callMessage });
+        return drinks;
+      }
 
-  (order.items || []).forEach((it, idx) => {
-    const cat = String(it.category || '').trim().toLowerCase();
-    if (BAR_CATEGORIES.some(bc => cat.includes(bc))) {
-      drinks.push({ originalIndex: idx, qty: it.qty, name: it.name });
+      (order.items || []).forEach((it, idx) => {
+        if (isCategoryForBar(it.category)) {
+          drinks.push({ originalIndex: idx, qty: it.qty, name: it.name });
+        }
+      });
+      return drinks;
     }
-  });
-  return drinks;
-}
 
     function updateBadges() {
       const kCount = currentOrders.filter(o => {
@@ -1062,6 +1263,62 @@
             <p class="text-4xl mb-2">🍽️</p>
             <p class="text-base font-bold text-base-text">Pase de cocina al día</p>
             <p class="text-xs text-base-muted mt-1">No hay comandas pendientes</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (kitchenSubMode === 'batch') {
+        const batchMap = {};
+        orders.forEach(ord => {
+          const cats = parseKitchenCategories(ord);
+          const state = completedKitchenState[ord.id] || {};
+          [...cats.tapas, ...cats.platos].forEach(item => {
+            if (state[item.originalIndex]) return; // Omitir los ya marcados individualmente
+            if (!batchMap[item.name]) {
+              batchMap[item.name] = { totalQty: 0, tables: new Set() };
+            }
+            batchMap[item.name].totalQty += parseInt(item.qty || 1, 10);
+            batchMap[item.name].tables.add(ord.table_number);
+          });
+        });
+
+        const batchItems = Object.entries(batchMap).sort((a, b) => b[1].totalQty - a[1].totalQty);
+        if (batchItems.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full text-center py-24 bg-base-card rounded-3xl border border-base-border">
+              <p class="text-4xl mb-2">🍽️</p>
+              <p class="text-base font-bold text-base-text">Todos los platos marcados</p>
+              <p class="text-xs text-base-muted mt-1">Cambia a "Por Mesas" para completar los pases</p>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = `
+          <div class="col-span-full bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-4">
+            <div class="border-b border-base-border pb-3 flex justify-between items-center">
+              <div>
+                <h3 class="font-serif-title text-lg font-bold text-base-text">👨‍🍳 Producción Total de Cocina</h3>
+                <p class="text-xs text-base-muted">Unidades totales acumuladas pendientes de preparar</p>
+              </div>
+              <span class="text-xs font-extrabold px-3 py-1 rounded-xl bg-primary-light text-primary-dark border border-primary/20">
+                ${batchItems.reduce((acc, [, d]) => acc + d.totalQty, 0)} raciones
+              </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${batchItems.map(([name, data]) => `
+                <div class="bg-base-bg border border-base-border rounded-2xl p-4 flex justify-between items-center gap-3 shadow-2xs">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-black text-base-text leading-snug">${name}</p>
+                    <p class="text-[11px] font-semibold text-base-muted mt-1 truncate">Mesas: ${Array.from(data.tables).join(', ')}</p>
+                  </div>
+                  <span class="text-base font-black bg-primary text-white px-3.5 py-1.5 rounded-xl shadow-xs flex-shrink-0">
+                    ${data.totalQty} uds
+                  </span>
+                </div>
+              `).join('')}
+            </div>
           </div>
         `;
         return;
@@ -1159,6 +1416,77 @@
             <p class="text-4xl mb-2">🍸</p>
             <p class="text-base font-bold text-base-text">Pase de bebidas despejado</p>
             <p class="text-xs text-base-muted mt-1">No hay bebidas ni avisos pendientes</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (barSubMode === 'batch') {
+        const batchMap = {};
+        const waiterCalls = [];
+
+        orders.forEach(ord => {
+          if (ord.is_waiter_call) {
+            const msg = (ord.items && ord.items[0] && ord.items[0].name) ? ord.items[0].name : '🔔 LLAMADA AL CAMARERO';
+            waiterCalls.push({ mesa: ord.table_number, msg, id: ord.id });
+            return;
+          }
+          const drinks = parseBarDrinks(ord);
+          const state = completedDrinksState[ord.id] || {};
+          drinks.forEach(d => {
+            if (state[d.originalIndex]) return;
+            if (!batchMap[d.name]) {
+              batchMap[d.name] = { totalQty: 0, tables: new Set() };
+            }
+            batchMap[d.name].totalQty += parseInt(d.qty || 1, 10);
+            batchMap[d.name].tables.add(ord.table_number);
+          });
+        });
+
+        const batchItems = Object.entries(batchMap).sort((a, b) => b[1].totalQty - a[1].totalQty);
+
+        grid.innerHTML = `
+          ${waiterCalls.length > 0 ? `
+            <div class="col-span-full bg-primary-light/60 border border-primary/30 rounded-3xl p-4 space-y-2">
+              <p class="text-xs font-black text-primary-dark uppercase tracking-wider">🔔 Avisos de Sala Pendientes (${waiterCalls.length})</p>
+              <div class="flex flex-wrap gap-2">
+                ${waiterCalls.map(c => `
+                  <div class="bg-white border border-primary/20 rounded-xl px-3 py-2 text-xs font-bold flex items-center gap-2 shadow-2xs">
+                    <span class="bg-primary text-white px-2 py-0.5 rounded-lg font-black">${c.mesa}</span>
+                    <span>${c.msg}</span>
+                    <button onclick="markBarDone('${c.id}')" class="ml-1 text-emerald-600 hover:underline font-extrabold">✓</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          <div class="col-span-full bg-base-card border border-base-border rounded-3xl p-6 shadow-xs space-y-4">
+            <div class="border-b border-base-border pb-3 flex justify-between items-center">
+              <div>
+                <h3 class="font-serif-title text-lg font-bold text-base-text">🍸 Producción Total de Barra</h3>
+                <p class="text-xs text-base-muted">Bebidas y postres acumulados pendientes de servir</p>
+              </div>
+              <span class="text-xs font-extrabold px-3 py-1 rounded-xl bg-primary-light text-primary-dark border border-primary/20">
+                ${batchItems.reduce((acc, [, d]) => acc + d.totalQty, 0)} uds
+              </span>
+            </div>
+            ${batchItems.length === 0 ? `
+              <p class="text-center py-6 text-xs text-base-muted">No hay bebidas pendientes de preparar.</p>
+            ` : `
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                ${batchItems.map(([name, data]) => `
+                  <div class="bg-base-bg border border-base-border rounded-2xl p-4 flex justify-between items-center gap-3 shadow-2xs">
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-black text-base-text leading-snug">${name}</p>
+                      <p class="text-[11px] font-semibold text-base-muted mt-1 truncate">Mesas: ${Array.from(data.tables).join(', ')}</p>
+                    </div>
+                    <span class="text-base font-black bg-primary text-white px-3.5 py-1.5 rounded-xl shadow-xs flex-shrink-0">
+                      ${data.totalQty} uds
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            `}
           </div>
         `;
         return;
@@ -1303,14 +1631,9 @@
       await fetchLoyaltyCards();
     }
 
-    function setMenuCatFilter(cat, clickedBtn) {
+    function setMenuCatFilter(cat) {
       menuCatFilter = cat;
-      document.querySelectorAll('.menu-cat-btn').forEach(btn => {
-        btn.className = "menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-bg text-base-muted hover:text-base-text transition-all";
-      });
-      if (clickedBtn) {
-        clickedBtn.className = "menu-cat-btn px-3 py-1.5 rounded-xl font-bold bg-base-text text-base-card transition-all";
-      }
+      syncCategoriesUI();
       renderCartaManager();
     }
 
@@ -1449,7 +1772,7 @@
 
       container.innerHTML = list.map(p => {
         const pt = parseInt(p.prep_time, 10) || 10;
-        const timeBadge = pt >= 30 ? '🥘 ~30m' : (pt >= 20 ? '🍳 ~20m' : '⚡ ~10m');
+        const timeBadge = pt >= 30 ? '~30m' : (pt >= 20 ? '~20m' : '~10m');
 
         const allergensBadges = (p.allergens || []).map(alg => {
           let icon = '⚠️';
@@ -1505,6 +1828,8 @@
       if (!p) return;
 
       document.getElementById('editProdId').value = p.id;
+      const editCatSel = document.getElementById('editProdCat');
+      if (editCatSel) editCatSel.value = p.category || '';
       document.getElementById('editNameEs').value = p.name || '';
       document.getElementById('editDescEs').value = p.description || '';
       document.getElementById('editNameEn').value = p.name_en || '';
@@ -1530,6 +1855,7 @@
 
     async function saveEditedProduct() {
       const id = document.getElementById('editProdId').value;
+      const category = document.getElementById('editProdCat')?.value || 'Entrantes';
       const name = document.getElementById('editNameEs').value.trim();
       const description = document.getElementById('editDescEs').value.trim();
       const name_en = document.getElementById('editNameEn').value.trim();
@@ -1549,7 +1875,7 @@
       }
 
       const { error } = await sb.from('products').update({
-        name, description,
+        category, name, description,
         name_en, description_en,
         name_ca, description_ca,
         name_fr, description_fr,

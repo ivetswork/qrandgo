@@ -122,17 +122,7 @@
     </div>
 
     <!-- Barra de Categorías Dinámica -->
-    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none" id="categoriesBar">
-      <button onclick="filterCategory('Todos')" class="cat-btn hidden px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Todos</button>
-      <button onclick="filterCategory('Entrantes')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-text text-base-card shadow-md transition-all flex-shrink-0 active:scale-95">Entrantes</button>
-      <button onclick="filterCategory('Para picar')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Para picar</button>
-      <button onclick="filterCategory('Arroces')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Arroces</button>
-      <button onclick="filterCategory('Carnes')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Carnes</button>
-      <button onclick="filterCategory('Pescados')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Pescados</button>
-      <button onclick="filterCategory('Bebidas')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Bebidas</button>
-      <button onclick="filterCategory('Vinos')" class="cat-btn hidden px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Vinos</button>
-      <button onclick="filterCategory('Postres')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95">Postres</button>
-    </div>
+    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none" id="categoriesBar"></div>
 
     <!-- Estado de Carga -->
     <div id="loading" class="text-center py-20 text-base-muted text-xs font-semibold">
@@ -287,8 +277,9 @@
     let restaurantData = null;
     let currentSessionId = null;
     let products = [];
+    let dynamicCategories = []; // [{ name: 'Entrantes', station: 'kitchen' }, ...]
     let cart = {};
-    let currentCategory = 'Entrantes';
+    let currentCategory = 'Todos';
     let searchQuery = '';
     let currentLang = 'es';
     let customerPhone = localStorage.getItem('qrandgo_phone') || '';
@@ -478,6 +469,8 @@
           } else if (payload.eventType === 'DELETE') {
             products = products.filter(p => String(p.id) !== String(oldProd.id));
           }
+          rebuildDynamicCategories(dynamicCategories);
+          renderCategoriesBar();
           renderCurrentView();
         })
         .subscribe();
@@ -491,7 +484,25 @@
       document.getElementById('loyaltyRestName').innerText = `Sellos • ${restaurantData.name}`;
       document.title = `${restaurantData.name} - Carta Digital`;
 
-      await loadProducts();
+      sb.channel('client-categories-' + restaurantData.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'restaurant_categories',
+          filter: `restaurant_id=eq.${restaurantData.id}`
+        }, async () => {
+          const { data: catRows } = await sb
+            .from('restaurant_categories')
+            .select('*')
+            .eq('restaurant_id', restaurantData.id)
+            .order('created_at', { ascending: true });
+          rebuildDynamicCategories(catRows || []);
+          renderCategoriesBar();
+          renderCurrentView();
+        })
+        .subscribe();
+
+      await loadCategoriesAndProducts();
       if (customerPhone) {
         await refreshLoyaltyUI();
       }
@@ -545,7 +556,25 @@
         .subscribe();
     }
 
-    async function loadProducts() {
+    const DEFAULT_CATEGORIES = [
+      { name: 'Entrantes', station: 'kitchen' },
+      { name: 'Para picar', station: 'kitchen' },
+      { name: 'Arroces', station: 'kitchen' },
+      { name: 'Carnes', station: 'kitchen' },
+      { name: 'Pescados', station: 'kitchen' },
+      { name: 'Bebidas', station: 'bar' },
+      { name: 'Postres', station: 'bar' }
+    ];
+
+    async function loadCategoriesAndProducts() {
+      // 1. Cargar categorías personalizadas desde Supabase si existen
+      const { data: catRows } = await sb
+        .from('restaurant_categories')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .order('created_at', { ascending: true });
+
+      // 2. Cargar productos
       const { data, error } = await sb
         .from('products')
         .select('*')
@@ -557,9 +586,83 @@
       }
 
       products = data || [];
+      rebuildDynamicCategories(catRows || []);
+
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('productList').classList.remove('hidden');
+      renderCategoriesBar();
       renderCurrentView();
+    }
+
+    function rebuildDynamicCategories(dbCategories) {
+      const map = new Map();
+
+      // Si el restaurante tiene categorías propias en restaurant_categories, usarlas; si no, partir de las base
+      const baseList = (dbCategories && dbCategories.length > 0) ? dbCategories : DEFAULT_CATEGORIES;
+      baseList.forEach(c => {
+        const key = String(c.name || '').trim().toLowerCase();
+        if (key && !HIDDEN_CATEGORIES.includes(key)) {
+          map.set(key, { name: String(c.name).trim(), station: c.station || 'kitchen' });
+        }
+      });
+
+      // Asegurar también cualquier categoría existente en productos que no estuviera en la lista
+      products.forEach(p => {
+        const rawCat = String(p.category || '').trim();
+        const key = rawCat.toLowerCase();
+        if (rawCat && !HIDDEN_CATEGORIES.includes(key) && !map.has(key)) {
+          const isBar = ['bebidas', 'bebida', 'vinos', 'vino', 'postres', 'postre', 'bar', 'cafes', 'cafés'].some(b => key.includes(b));
+          map.set(key, { name: rawCat, station: isBar ? 'bar' : 'kitchen' });
+        }
+      });
+
+      dynamicCategories = Array.from(map.values());
+
+      // Seleccionar primera categoría disponible si la actual ya no existe
+      if (dynamicCategories.length > 0) {
+        const exists = currentCategory === 'Todos' || dynamicCategories.some(c => c.name.toLowerCase() === currentCategory.toLowerCase());
+        if (!exists || currentCategory === 'Todos') {
+          currentCategory = dynamicCategories[0].name;
+        }
+      } else {
+        currentCategory = 'Todos';
+      }
+    }
+
+    function translateCategoryLabel(catName) {
+      const t = TRANSLATIONS[currentLang] || TRANSLATIONS.es;
+      const keyMap = {
+        'todos': t.todos,
+        'entrantes': t.entrantes,
+        'para picar': t.paraPicar,
+        'arroces': t.arroces,
+        'carnes': t.carnes,
+        'pescados': t.pescados,
+        'bebidas': t.bebidas,
+        'vinos': t.vinos,
+        'postres': t.postres
+      };
+      return keyMap[catName.toLowerCase()] || catName;
+    }
+
+    function renderCategoriesBar() {
+      const bar = document.getElementById('categoriesBar');
+      if (!bar) return;
+
+      bar.innerHTML = dynamicCategories.map(cat => {
+        const isSelected = cat.name.toLowerCase() === currentCategory.toLowerCase();
+        const label = translateCategoryLabel(cat.name);
+        const safeCat = cat.name.replace(/'/g, "\'");
+        return `
+          <button onclick="filterCategory('${safeCat}')" class="cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider ${
+            isSelected
+              ? 'bg-base-text text-base-card shadow-md'
+              : 'bg-base-card text-base-muted border border-base-border hover:bg-base-bg'
+          } transition-all flex-shrink-0 active:scale-95">
+            ${label}
+          </button>
+        `;
+      }).join('');
     }
 
     function handleSearch(val) {
@@ -603,6 +706,13 @@
       renderProducts(filtered);
     }
 
+    function isBarCategory(categoryName) {
+      const catLower = String(categoryName || '').trim().toLowerCase();
+      const found = dynamicCategories.find(c => c.name.toLowerCase() === catLower);
+      if (found) return found.station === 'bar';
+      return ['bebidas', 'bebida', 'vinos', 'vino', 'postres', 'postre', 'bar', 'cafes', 'cafés'].some(b => catLower.includes(b));
+    }
+
     function renderProducts(list) {
       const container = document.getElementById('productList');
       if (list.length === 0) {
@@ -625,7 +735,7 @@
         const img = p.image_url;
         const qty = cart[id] || 0;
         const pt = parseInt(p.prep_time, 10) || 10;
-        const isDrink = (p.category || '').toLowerCase() === 'bebidas';
+        const isDrink = isBarCategory(p.category);
         const isAvailable = p.available !== false;
 
         const timeTag = isDrink
@@ -636,7 +746,7 @@
                 : (pt >= 20
                     ? 'bg-primary-light text-primary-dark border border-primary/20'
                     : 'bg-base-bg text-base-muted border border-base-border')
-            }">${pt >= 30 ? '🥘 ~30 min' : (pt >= 20 ? '🍳 ~20 min' : '⚡ ~10 min')}</span>`;
+            }">${pt >= 30 ? '~30 min' : (pt >= 20 ? '~20 min' : '~10 min')}</span>`;
 
         const allergensList = (p.allergens || []).map(alg => {
           let icon = '⚠️';
@@ -768,7 +878,7 @@
       activeKeys.forEach(id => {
         const p = products.find(prod => String(prod.id) === id);
         if (!p) return;
-        const isDrink = (p.category || '').toLowerCase() === 'bebidas';
+        const isDrink = isBarCategory(p.category);
         if (!isDrink) {
           hasFood = true;
           const pt = parseInt(p.prep_time, 10) || 10;
@@ -805,7 +915,7 @@
         const p = products.find(prod => String(prod.id) === id);
         const precio = parseFloat(p ? p.price : 0);
         const pt = parseInt(p?.prep_time, 10) || 10;
-        const isDrink = (p?.category || '').toLowerCase() === 'bebidas';
+        const isDrink = isBarCategory(p?.category);
         return `
           <div class="py-2.5 flex justify-between items-center gap-2">
             <div class="flex-1 min-w-0">
@@ -839,7 +949,7 @@
         box.className = "mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between";
         box.innerHTML = `
           <div>
-            <p class="font-extrabold">🥘 Elaboración lenta (${est.min}–${est.max} min aprox.)</p>
+            <p class="font-extrabold">Elaboración lenta (${est.min}–${est.max} min aprox.)</p>
             <p class="text-[11px] opacity-80 mt-0.5">Incluye platos preparados al momento${est.queueCount > 0 ? ` · ${est.queueCount} comandas en curso` : ''}.</p>
           </div>
         `;
@@ -847,7 +957,7 @@
         box.className = "mt-3 p-3 rounded-2xl bg-primary-light border border-primary/20 text-xs text-primary-dark flex items-center justify-between";
         box.innerHTML = `
           <div>
-            <p class="font-extrabold">🍳 Tiempo medio (${est.min}–${est.max} min aprox.)</p>
+            <p class="font-extrabold">Tiempo medio (${est.min}–${est.max} min aprox.)</p>
             <p class="text-[11px] opacity-80 mt-0.5">Preparación estándar${est.queueCount > 0 ? ` · ${est.queueCount} comandas en curso` : ''}.</p>
           </div>
         `;
@@ -855,7 +965,7 @@
         box.className = "mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between";
         box.innerHTML = `
           <div>
-            <p class="font-extrabold">⚡ Servicio rápido (${est.min}–${est.max} min aprox.)</p>
+            <p class="font-extrabold">Servicio rápido (${est.min}–${est.max} min aprox.)</p>
             <p class="text-[11px] opacity-80 mt-0.5">Platos ágiles de salida rápida.</p>
           </div>
         `;
@@ -1105,8 +1215,8 @@
             : `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">⏳ Avisado...</span>`;
         } else {
           const items = ord.items || [];
-          const hasDrinks = items.some(i => (i.category || '').toLowerCase() === 'bebidas');
-          const hasFood = items.some(i => (i.category || '').toLowerCase() !== 'bebidas');
+          const hasDrinks = items.some(i => isBarCategory(i.category));
+          const hasFood = items.some(i => !isBarCategory(i.category));
           const barDone = !hasDrinks || ord.bar_status === 'ready';
           const kitchenDone = !hasFood || ord.kitchen_status === 'ready';
 
@@ -1295,29 +1405,14 @@
       renderCurrentView();
     }
 
-    const CATEGORY_MAP = ['Todos', 'Entrantes', 'Para picar', 'Arroces', 'Carnes', 'Pescados', 'Bebidas', 'Vinos', 'Postres'];
-
     function filterCategory(cat) {
       currentCategory = cat;
-      const buttons = document.querySelectorAll('#categoriesBar .cat-btn');
-      buttons.forEach((btn, index) => {
-        const isSelected = CATEGORY_MAP[index] === cat;
-        if (isSelected) {
-          btn.className = "cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-text text-base-card shadow-md transition-all flex-shrink-0 active:scale-95";
-        } else {
-          btn.className = "cat-btn px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-base-card text-base-muted border border-base-border transition-all flex-shrink-0 active:scale-95 hover:bg-base-bg";
-        }
-      });
+      renderCategoriesBar();
       renderCurrentView();
     }
 
     function updateCategoryButtonsText() {
-      const t = TRANSLATIONS[currentLang] || TRANSLATIONS.es;
-      const buttons = document.querySelectorAll('#categoriesBar .cat-btn');
-      const categoryKeys = ['todos', 'entrantes', 'paraPicar', 'arroces', 'carnes', 'pescados', 'bebidas', 'vinos', 'postres'];
-      buttons.forEach((btn, index) => {
-        if (categoryKeys[index] && t[categoryKeys[index]]) btn.innerText = t[categoryKeys[index]];
-      });
+      renderCategoriesBar();
     }
 
     initApp();
