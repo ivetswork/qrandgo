@@ -913,6 +913,9 @@
         renderCurrentView();
         closeModal();
         alert('¡Comanda enviada a preparación con éxito!');
+        setTimeout(() => {
+          location.reload(); // Recarga la página automáticamente tras 1 segundo
+        }, 1000);
       } catch (err) {
         console.error(err);
         alert('Hubo un error al enviar el pedido. Por favor, reinténtalo.');
