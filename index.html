@@ -376,13 +376,13 @@
     }
 
     async function initApp() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const qrSlug = urlParams.get('qr') || urlParams.get('token');
+  const urlParams = new URLSearchParams(window.location.search);
+  const qrSlug = urlParams.get('token') || urlParams.get('qr'); // Asegura que lea tanto ?token= como ?qr=
 
-      if (!qrSlug) {
-        showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
-        return;
-      }
+  if (!qrSlug) {
+    showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
+    return;
+  }
 
       const { data, error } = await sb.rpc('validate_and_open_table', { p_qr_slug: qrSlug });
 
