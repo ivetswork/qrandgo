@@ -347,6 +347,27 @@
 
       <!-- VISTA 5: FIDELIZACIÓN -->
       <div id="view-fidelizacion" class="hidden max-w-4xl mx-auto space-y-5">
+        <!-- CONFIGURACIÓN DE LOS 6 GAJOS DE LA RULETA -->
+        <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-base-border pb-3">
+            <div>
+              <h2 class="font-serif-title text-xl font-bold text-base-text">🎰 Premios de la Ruleta (6 Opciones)</h2>
+              <p class="text-xs text-base-muted">Configura los 6 regalos y el % de probabilidad que verán los clientes al completar sus sellos.</p>
+            </div>
+            <span id="rouletteProbTotalBadge" class="text-xs font-extrabold px-3 py-1 rounded-xl bg-primary-light text-primary-dark border border-primary/20">
+              Total: 100%
+            </span>
+          </div>
+
+          <div id="rouletteSlicesEditor" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs"></div>
+
+          <div class="flex justify-end pt-1">
+            <button id="saveRouletteBtn" onclick="saveRouletteConfig()" class="bg-base-text hover:bg-black text-base-card font-extrabold text-xs px-5 py-3 rounded-xl uppercase tracking-wider transition-all active:scale-95">
+              Guardar Premios de Ruleta
+            </button>
+          </div>
+        </div>
+
         <div class="bg-base-card border border-base-border rounded-3xl p-5 shadow-xs space-y-4">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -1893,7 +1914,106 @@
       alert("¡Plato actualizado con éxito!");
     }
 
+    const DEFAULT_ROULETTE_SLICES = [
+      { prize: "Postre Gratis 🍰", probability: 15 },
+      { prize: "Café de Cortesía ☕", probability: 25 },
+      { prize: "10% de Descuento 🏷️", probability: 20 },
+      { prize: "Chupito de la Casa 🥂", probability: 20 },
+      { prize: "Bebida Gratis 🥤", probability: 15 },
+      { prize: "2x1 en Entrantes 🍽️", probability: 5 }
+    ];
+
+    function getCurrentRouletteSlices() {
+      const cfg = restaurantData?.loyalty_roulette_config;
+      if (Array.isArray(cfg) && cfg.length === 6) return cfg;
+      if (Array.isArray(cfg) && cfg.length > 0) {
+        const padded = [...cfg];
+        while (padded.length < 6) padded.push(DEFAULT_ROULETTE_SLICES[padded.length]);
+        return padded.slice(0, 6);
+      }
+      return DEFAULT_ROULETTE_SLICES;
+    }
+
+    function renderRouletteEditor() {
+      const container = document.getElementById('rouletteSlicesEditor');
+      if (!container) return;
+      const slices = getCurrentRouletteSlices();
+
+      container.innerHTML = slices.map((s, idx) => `
+        <div class="bg-base-bg border border-base-border rounded-2xl p-3 flex items-center gap-2.5">
+          <span class="w-6 h-6 rounded-lg bg-base-text text-base-card font-black text-[11px] flex items-center justify-center flex-shrink-0">
+            ${idx + 1}
+          </span>
+          <input type="text" id="roulettePrize_${idx}" value="${String(s.prize || '').replace(/"/g, '&quot;')}" placeholder="Nombre del premio..." class="flex-1 min-w-0 bg-base-card border border-base-border rounded-xl px-2.5 py-2 font-bold text-base-text outline-none focus:border-primary">
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <input type="number" id="rouletteProb_${idx}" min="0" max="100" value="${Number(s.probability) || 0}" oninput="updateRouletteProbSum()" class="w-16 bg-base-card border border-base-border rounded-xl px-2 py-2 font-black text-center text-base-text outline-none focus:border-primary">
+            <span class="font-bold text-base-muted">%</span>
+          </div>
+        </div>
+      `).join('');
+
+      updateRouletteProbSum();
+    }
+
+    function updateRouletteProbSum() {
+      let sum = 0;
+      for (let i = 0; i < 6; i++) {
+        sum += parseInt(document.getElementById(`rouletteProb_${i}`)?.value || '0', 10) || 0;
+      }
+      const badge = document.getElementById('rouletteProbTotalBadge');
+      if (badge) {
+        badge.innerText = `Total: ${sum}%`;
+        badge.className = sum === 100
+          ? 'text-xs font-extrabold px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200'
+          : 'text-xs font-extrabold px-3 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200';
+      }
+    }
+
+    async function saveRouletteConfig() {
+      const newSlices = [];
+      let totalProb = 0;
+
+      for (let i = 0; i < 6; i++) {
+        const prize = (document.getElementById(`roulettePrize_${i}`)?.value || '').trim();
+        const probability = parseInt(document.getElementById(`rouletteProb_${i}`)?.value || '0', 10) || 0;
+        if (!prize) {
+          alert(`Escribe el nombre del premio para la opción #${i + 1}.`);
+          return;
+        }
+        newSlices.push({ prize, probability });
+        totalProb += probability;
+      }
+
+      if (totalProb <= 0) {
+        alert("La suma de probabilidades debe ser mayor que 0.");
+        return;
+      }
+
+      const btn = document.getElementById('saveRouletteBtn');
+      btn.disabled = true;
+      btn.innerText = "Guardando...";
+
+      try {
+        const { data: updated, error } = await sb
+          .from('restaurants')
+          .update({ loyalty_roulette_config: newSlices })
+          .eq('id', restaurantData.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        restaurantData = updated;
+        alert("¡Los 6 premios de la ruleta se han guardado correctamente!");
+      } catch (err) {
+        alert("Error al guardar la ruleta: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Guardar Premios de Ruleta";
+      }
+    }
+
     function renderFidelizacion() {
+      renderRouletteEditor();
       const container = document.getElementById('loyaltyList');
       const query = (document.getElementById('phoneSearchInput')?.value || '').trim();
       const required = restaurantData.stamps_required || 8;

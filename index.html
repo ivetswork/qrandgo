@@ -10,6 +10,51 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <!-- Modal de Ruleta de Premios (6 gajos) -->
+  <div id="rouletteModal" class="fixed inset-0 bg-base-text/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-base-card rounded-3xl w-full max-w-sm p-6 space-y-5 border border-base-border shadow-2xl text-center relative overflow-hidden">
+      <button onclick="closeRouletteModal()" class="absolute right-4 top-4 text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+
+      <div>
+        <span class="inline-block text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-primary-light text-primary-dark border border-primary/20 mb-1">
+          🎉 ¡Tarjeta Completada!
+        </span>
+        <h2 class="font-serif-title font-bold text-xl text-base-text">Ruleta de Premios</h2>
+        <p class="text-xs text-base-muted mt-0.5">Gira la ruleta y descubre tu premio de esta visita</p>
+      </div>
+
+      <!-- Contenedor visual de la ruleta -->
+      <div class="relative w-64 h-64 mx-auto my-2 flex items-center justify-center">
+        <!-- Puntero superior -->
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-base-text drop-shadow"></div>
+
+        <!-- Disco SVG de 6 gajos -->
+        <div id="rouletteWheel" class="w-full h-full rounded-full shadow-lg border-4 border-base-text overflow-hidden transition-transform duration-[4500ms] ease-[cubic-bezier(0.15,0.85,0.2,1)]" style="transform: rotate(0deg);">
+          <svg id="rouletteSvg" viewBox="0 0 200 200" class="w-full h-full"></svg>
+        </div>
+
+        <!-- Centro decorativo -->
+        <div class="absolute w-11 h-11 rounded-full bg-base-card border-4 border-base-text shadow-md flex items-center justify-center text-base z-10">
+          🎁
+        </div>
+      </div>
+
+      <div id="rouletteResultBox" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
+        <p class="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">¡Enhorabuena! Has ganado:</p>
+        <p id="roulettePrizeText" class="text-base font-black text-emerald-950">-</p>
+        <p class="text-[11px] text-emerald-700">Hemos avisado a la barra para que te lo entreguen en tu mesa.</p>
+      </div>
+
+      <button id="spinRouletteBtn" onclick="spinLoyaltyRoulette()" class="w-full bg-primary hover:bg-primary-dark text-white font-black py-3.5 rounded-xl shadow-md transition-all active:scale-95 text-xs uppercase tracking-wider">
+        🎰 ¡Girar Ruleta Ahora!
+      </button>
+
+      <button id="closeRouletteDoneBtn" onclick="closeRouletteModal()" class="hidden w-full bg-base-text hover:bg-black text-base-card font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+        Volver a la carta
+      </button>
+    </div>
+  </div>
+
   <script>
     tailwind.config = {
       theme: {
@@ -257,6 +302,13 @@
           </div>
         </div>
 
+        <div id="rouletteUnlockBox" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-center space-y-2">
+          <p class="text-xs font-extrabold text-amber-900">🎉 ¡Has completado tus sellos! Tienes una tirada disponible.</p>
+          <button onclick="openRouletteModal()" class="w-full bg-primary hover:bg-primary-dark text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95">
+            🎰 Abrir Ruleta de Premios
+          </button>
+        </div>
+
         <div id="sessionStampStatus" class="bg-primary-light border border-primary/20 rounded-xl p-3 text-xs text-primary-dark font-medium">
           Haz un pedido en esta mesa para activar tu sello de hoy.
         </div>
@@ -426,10 +478,13 @@
 
       const { data: brandRow } = await sb
         .from('restaurants')
-        .select('primary_color')
+        .select('primary_color, loyalty_roulette_config, stamps_required, reward_description')
         .eq('id', restaurantData.id)
         .single();
 
+      if (brandRow) {
+        restaurantData = { ...restaurantData, ...brandRow };
+      }
       applyBrandTheme(brandRow?.primary_color || restaurantData.primary_color);
 
       sb.channel('brand-theme-' + restaurantData.id)
@@ -439,8 +494,9 @@
           table: 'restaurants',
           filter: `id=eq.${restaurantData.id}`
         }, (payload) => {
-          if (payload.new?.primary_color) {
-            applyBrandTheme(payload.new.primary_color);
+          if (payload.new) {
+            restaurantData = { ...restaurantData, ...payload.new };
+            if (payload.new.primary_color) applyBrandTheme(payload.new.primary_color);
           }
         })
         .subscribe();
@@ -1325,13 +1381,19 @@
       const currentStamps = card ? card.stamps_count : 0;
       const required = restaurantData.stamps_required || 8;
 
-      document.getElementById('headerStampBadge').innerText = `${currentStamps}/${required}`;
+      const canSpin = currentStamps >= required;
+      document.getElementById('headerStampBadge').innerText = canSpin ? '🎰 ¡Girar!' : `${currentStamps}/${required}`;
       document.getElementById('stampsCounterText').innerText = `${currentStamps}/${required}`;
-      document.getElementById('rewardGoalText').innerText = `Premio: ${restaurantData.reward_description}`;
-      document.getElementById('loyaltyBannerText').innerText =
-        currentStamps >= required
-          ? `🎉 ¡Tienes un premio listo para canjear en barra!`
-          : `Llevas ${currentStamps} de ${required} sellos • ${restaurantData.reward_description}`;
+      document.getElementById('rewardGoalText').innerText = `Premio: Ruleta de 6 regalos`;
+      document.getElementById('loyaltyBannerText').innerText = canSpin
+        ? `🎰 ¡Sellos completos! Pulsa aquí para girar la ruleta y ver tu premio`
+        : `Llevas ${currentStamps} de ${required} sellos • Completa ${required} y gira la ruleta`;
+
+      const unlockBox = document.getElementById('rouletteUnlockBox');
+      if (unlockBox) {
+        if (canSpin) unlockBox.classList.remove('hidden');
+        else unlockBox.classList.add('hidden');
+      }
 
       const grid = document.getElementById('stampsGrid');
       let boxesHtml = '';
@@ -1373,6 +1435,188 @@
           statusBox.innerText = "Haz un pedido en esta mesa para activar tu sello de hoy.";
         }
       }
+    }
+
+    const DEFAULT_ROULETTE_SLICES = [
+      { prize: "Postre Gratis 🍰", probability: 15 },
+      { prize: "Café de Cortesía ☕", probability: 25 },
+      { prize: "10% de Descuento 🏷️", probability: 20 },
+      { prize: "Chupito de la Casa 🥂", probability: 20 },
+      { prize: "Bebida Gratis 🥤", probability: 15 },
+      { prize: "2x1 en Entrantes 🍽️", probability: 5 }
+    ];
+
+    let isSpinningRoulette = false;
+
+    function getRouletteSlices() {
+      const cfg = restaurantData?.loyalty_roulette_config;
+      if (Array.isArray(cfg) && cfg.length === 6) return cfg;
+      if (Array.isArray(cfg) && cfg.length > 0) {
+        const padded = [...cfg];
+        while (padded.length < 6) padded.push(DEFAULT_ROULETTE_SLICES[padded.length]);
+        return padded.slice(0, 6);
+      }
+      return DEFAULT_ROULETTE_SLICES;
+    }
+
+    function renderRouletteWheelSvg() {
+      const svg = document.getElementById('rouletteSvg');
+      if (!svg) return;
+      const slices = getRouletteSlices();
+      const colors = ['#12B89B', '#1F2937', '#F59E0B', '#0E937C', '#374151', '#D97706'];
+      const cx = 100, cy = 100, r = 100;
+      const sliceAngle = 360 / 6;
+
+      let pathsHtml = '';
+      slices.forEach((s, idx) => {
+        const startDeg = idx * sliceAngle - 90;
+        const endDeg = startDeg + sliceAngle;
+        const startRad = (Math.PI / 180) * startDeg;
+        const endRad = (Math.PI / 180) * endDeg;
+
+        const x1 = cx + r * Math.cos(startRad);
+        const y1 = cy + r * Math.sin(startRad);
+        const x2 = cx + r * Math.cos(endRad);
+        const y2 = cy + r * Math.sin(endRad);
+
+        const midDeg = startDeg + sliceAngle / 2;
+        const rawText = String(s.prize || '');
+        const labelShort = rawText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim().slice(0, 14);
+        const emojiMatch = rawText.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu);
+        const emoji = emojiMatch ? emojiMatch[0] : '🎁';
+
+        pathsHtml += `
+          <path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z" fill="${colors[idx % colors.length]}" stroke="#FFFFFF" stroke-width="1.5" />
+          <g transform="translate(${cx}, ${cy}) rotate(${midDeg})">
+            <text x="64" y="-3" fill="#FFFFFF" font-size="7.2" font-weight="800" text-anchor="middle" dominant-baseline="middle">${labelShort}</text>
+            <text x="64" y="8" fill="#FFFFFF" font-size="11" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+          </g>
+        `;
+      });
+
+      svg.innerHTML = pathsHtml;
+    }
+
+    function openRouletteModal() {
+      closeLoyaltyModal();
+      isSpinningRoulette = false;
+      const wheel = document.getElementById('rouletteWheel');
+      if (wheel) {
+        wheel.style.transition = 'none';
+        wheel.style.transform = 'rotate(0deg)';
+      }
+      document.getElementById('rouletteResultBox').classList.add('hidden');
+      document.getElementById('closeRouletteDoneBtn').classList.add('hidden');
+      const spinBtn = document.getElementById('spinRouletteBtn');
+      spinBtn.classList.remove('hidden');
+      spinBtn.disabled = false;
+      spinBtn.innerText = '🎰 ¡Girar Ruleta Ahora!';
+
+      renderRouletteWheelSvg();
+      document.getElementById('rouletteModal').classList.remove('hidden');
+    }
+
+    function closeRouletteModal() {
+      if (isSpinningRoulette) return;
+      document.getElementById('rouletteModal').classList.add('hidden');
+    }
+
+    async function spinLoyaltyRoulette() {
+      if (isSpinningRoulette || !customerPhone) return;
+
+      const valid = await verifyActiveSessionBeforeAction();
+      if (!valid) return;
+
+      const { data: card } = await sb
+        .from('loyalty_cards')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('phone_number', customerPhone)
+        .maybeSingle();
+
+      const required = restaurantData.stamps_required || 8;
+      if (!card || card.stamps_count < required) {
+        alert("Aún no tienes los sellos suficientes para girar la ruleta.");
+        closeRouletteModal();
+        return;
+      }
+
+      isSpinningRoulette = true;
+      const spinBtn = document.getElementById('spinRouletteBtn');
+      spinBtn.disabled = true;
+      spinBtn.innerText = 'Girando...';
+
+      const slices = getRouletteSlices();
+      const totalWeight = slices.reduce((sum, s) => sum + Math.max(0, Number(s.probability) || 0), 0);
+      let winningIndex = 0;
+      if (totalWeight > 0) {
+        let rnd = Math.random() * totalWeight;
+        for (let i = 0; i < slices.length; i++) {
+          rnd -= Math.max(0, Number(slices[i].probability) || 0);
+          if (rnd <= 0) {
+            winningIndex = i;
+            break;
+          }
+        }
+      } else {
+        winningIndex = Math.floor(Math.random() * slices.length);
+      }
+
+      const winningSlice = slices[winningIndex];
+      const sliceAngle = 360 / 6;
+      const targetOffset = (360 - (winningIndex * sliceAngle + sliceAngle / 2)) % 360;
+      const jitter = (Math.random() - 0.5) * 24;
+      const finalRotation = 360 * 6 + targetOffset + jitter;
+
+      const wheel = document.getElementById('rouletteWheel');
+      void wheel.offsetWidth;
+      wheel.style.transition = 'transform 4.5s cubic-bezier(0.15, 0.85, 0.2, 1)';
+      wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+      setTimeout(async () => {
+        try {
+          await sb.from('loyalty_cards').update({
+            stamps_count: Math.max(0, card.stamps_count - required),
+            rewards_redeemed: (card.rewards_redeemed || 0) + 1,
+            updated_at: new Date().toISOString()
+          }).eq('id', card.id);
+
+          await sb.from('customer_rewards').insert({
+            restaurant_id: String(restaurantData.id),
+            phone_number: customerPhone,
+            prize_name: winningSlice.prize,
+            is_redeemed: false
+          });
+
+          const sessionId = await ensureTableSession();
+          await sb.from('orders').insert({
+            restaurant_id: restaurantData.id,
+            session_id: sessionId,
+            table_number: tableData.table_number,
+            items: [{
+              name: `🎰 PREMIO RULETA (${customerPhone}): ${winningSlice.prize}`,
+              category: 'Bebidas',
+              qty: 1,
+              price: 0
+            }],
+            total_amount: 0,
+            is_waiter_call: true,
+            bar_status: 'pending'
+          });
+
+          document.getElementById('roulettePrizeText').innerText = winningSlice.prize;
+          document.getElementById('rouletteResultBox').classList.remove('hidden');
+          spinBtn.classList.add('hidden');
+          document.getElementById('closeRouletteDoneBtn').classList.remove('hidden');
+
+          await refreshLoyaltyUI();
+        } catch (err) {
+          console.error(err);
+          alert("¡Has ganado: " + winningSlice.prize + "! Enséñalo en barra para canjearlo.");
+        } finally {
+          isSpinningRoulette = false;
+        }
+      }, 4600);
     }
 
     function openLoyaltyModal() {
