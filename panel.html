@@ -394,7 +394,7 @@
             <button id="saveSettingsBtn" onclick="saveRestaurantSettings()" class="flex-1 bg-base-text hover:bg-black text-base-card font-extrabold text-xs py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95">
               Guardar Configuración
             </button>
-            <a id="openQrsLink" href="qrs.html" target="_blank" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 text-center flex items-center justify-center gap-1.5">
+            <a id="openQrsLink" href="qrs.html" target="_blank"  onclick="openQrPage(event)" class="bg-primary hover:bg-primary-dark text-white font-extrabold text-xs px-5 py-3.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 text-center flex items-center justify-center gap-1.5">
               <span>🖨️</span>
               <span>Ver / Imprimir QRs</span>
             </a>
@@ -1655,6 +1655,15 @@
         `;
       }).join('');
     }
+    function openQrPage(e) {
+  e.preventDefault();
+  if (!restaurantData || !restaurantData.slug) {
+    alert("Cargando datos del restaurante, espera un segundo...");
+    return;
+  }
+  // Abre qrs.html pasando automáticamente el slug del restaurante actual
+  window.open(`qrs.html?rest=${restaurantData.slug}`, '_blank');
+}
   </script>
 </body>
 </html>
