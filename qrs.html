@@ -242,7 +242,7 @@
       if (base.endsWith('/')) base = base.slice(0, -1);
 
       tablesList.forEach((t, idx) => {
-        const tableUrl = `${base}?token=${encodeURIComponent(t.qr_code_slug)}`;
+const tableUrl = `${base}?token=${encodeURIComponent(t.qr_slug)}`;
         const qrElementId = `qrcode-${idx}`;
 
         const card = document.createElement('div');
