@@ -798,21 +798,98 @@
       }
     }
 
+    let soundEnabled = true;
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('soundIcon');
+      const text = document.getElementById('soundText');
+      if (icon) icon.innerText = soundEnabled ? '🔔' : '🔕';
+      if (text) text.innerText = soundEnabled ? 'Sonido: ON' : 'Sonido: OFF';
+    }
+
+    function playNotificationSound() {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1174.66, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    async function toggleProductAvailability(prodId, currentAvail) {
+      await sb.from('products').update({ available: !currentAvail }).eq('id', prodId);
+      await fetchMenuProducts();
+    }
+
+    function setKitchenSubView(mode) {
+      const btnT = document.getElementById('btnCocinaTables');
+      const btnB = document.getElementById('btnCocinaBatch');
+      if (btnT && btnB) {
+        btnT.className = mode === 'tables'
+          ? 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white'
+          : 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text';
+        btnB.className = mode === 'batch'
+          ? 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white'
+          : 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text';
+      }
+      renderCocina();
+    }
+
+    function setBarSubView(mode) {
+      const btnT = document.getElementById('btnBarraTables');
+      const btnB = document.getElementById('btnBarraBatch');
+      if (btnT && btnB) {
+        btnT.className = mode === 'tables'
+          ? 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white'
+          : 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text';
+        btnB.className = mode === 'batch'
+          ? 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all bg-base-text text-white'
+          : 'flex-1 py-2 px-3 rounded-xl text-xs font-extrabold uppercase transition-all text-base-muted hover:text-base-text';
+      }
+      renderBarra();
+    }
+
     function subscribeRealtime() {
+      let lastKnownOrderCount = currentOrders.length;
+
       sb.channel('panel-live-' + restaurantData.id)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantData.id}` }, () => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+          if (payload.new && String(payload.new.restaurant_id) !== String(restaurantData.id)) return;
           playNotificationSound();
           fetchActiveOrders();
           fetchHistoricalOrders();
         })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantData.id}` }, () => {
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+          if (payload.new && String(payload.new.restaurant_id) !== String(restaurantData.id)) return;
           fetchActiveOrders();
           fetchHistoricalOrders();
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `restaurant_id=eq.${restaurantData.id}` }, () => { loadTables(); fetchActiveOrders(); })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `restaurant_id=eq.${restaurantData.id}` }, () => fetchMenuProducts())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_cards', filter: `restaurant_id=eq.${restaurantData.id}` }, () => fetchLoyaltyCards())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => { loadTables(); fetchActiveOrders(); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchMenuProducts())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_cards' }, () => fetchLoyaltyCards())
         .subscribe();
+
+      // Respaldo automático cada 3 segundos para que nunca tengas que recargar a mano
+      setInterval(async () => {
+        if (!restaurantData) return;
+        const prevIds = new Set(currentOrders.map(o => String(o.id)));
+        await fetchActiveOrders();
+        const hasNewOrder = currentOrders.some(o => !prevIds.has(String(o.id)));
+        if (hasNewOrder) {
+          playNotificationSound();
+          fetchHistoricalOrders();
+        }
+      }, 3000);
     }
 
     function toggleAdminMenu(e) {

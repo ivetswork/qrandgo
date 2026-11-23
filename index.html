@@ -376,24 +376,62 @@
     }
 
     async function initApp() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const qrSlug = urlParams.get('token') || urlParams.get('qr'); // Asegura que lea tanto ?token= como ?qr=
+      const urlParams = new URLSearchParams(window.location.search);
+      const qrSlug = urlParams.get('token') || urlParams.get('qr');
 
-  if (!qrSlug) {
-    showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
-    return;
-  }
+      // Si no hay token en la URL, comprobar si hay una sesión activa guardada en este dispositivo
+      if (!qrSlug) {
+        const savedSessionRaw = localStorage.getItem('qrandgo_active_session');
+        if (!savedSessionRaw) {
+          showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
+          return;
+        }
 
-      const { data, error } = await sb.rpc('validate_and_open_table', { p_qr_slug: qrSlug });
+        try {
+          const savedSession = JSON.parse(savedSessionRaw);
+          const { data: tableCheck, error: checkErr } = await sb
+            .from('tables')
+            .select('active_token, token_expires_at, status')
+            .eq('id', savedSession.table_id)
+            .single();
 
-      if (error || !data || !data.valid) {
-        showLockScreen("Mesa no verificada", "El código QR no es válido. Escanea de nuevo el código de tu mesa.");
-        return;
+          const savedToken = localStorage.getItem(`qrandgo_token_${savedSession.table_id}`);
+          const isExpired = !tableCheck || new Date(tableCheck.token_expires_at) < new Date();
+          const tokenMismatch = !tableCheck || tableCheck.active_token !== savedToken;
+
+          if (checkErr || isExpired || tokenMismatch) {
+            localStorage.removeItem('qrandgo_active_session');
+            showLockScreen("Sesión finalizada", "La mesa ha sido cerrada o ha superado el tiempo de seguridad. Vuelve a escanear el QR de la mesa para abrir una nueva comanda.");
+            return;
+          }
+
+          tableData = savedSession;
+          restaurantData = savedSession.restaurant;
+          currentSessionId = savedSession.session_id;
+        } catch (e) {
+          localStorage.removeItem('qrandgo_active_session');
+          showLockScreen("Mesa no verificada", "Por favor, escanea el código QR situado físicamente en tu mesa para acceder a la carta.");
+          return;
+        }
+      } else {
+        const { data, error } = await sb.rpc('validate_and_open_table', { p_qr_slug: qrSlug });
+
+        if (error || !data || !data.valid) {
+          showLockScreen("Mesa no verificada", "El código QR no es válido. Escanea de nuevo el código de tu mesa.");
+          return;
+        }
+
+        tableData = data;
+        restaurantData = data.restaurant;
+        currentSessionId = data.session_id;
+
+        // Guardar datos de sesión activa y limpiar el token de la URL para que no quede en el historial
+        localStorage.setItem('qrandgo_active_session', JSON.stringify(data));
+        if (window.history && window.history.replaceState) {
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
       }
-
-      tableData = data;
-      restaurantData = data.restaurant;
-      currentSessionId = data.session_id;
 
       const { data: brandRow } = await sb
         .from('restaurants')
@@ -475,6 +513,7 @@
       const tokenMismatch = data.active_token !== savedToken;
 
       if (isExpired || tokenMismatch) {
+        localStorage.removeItem('qrandgo_active_session');
         showLockScreen(
           "Sesión finalizada",
           "La mesa ha sido cerrada o ha superado los 30 minutos de seguridad. Vuelve a escanear el QR de la mesa para abrir una nueva comanda."
@@ -496,6 +535,7 @@
           const savedToken = localStorage.getItem(`qrandgo_token_${tableData.table_id}`);
           if (updated.active_token !== savedToken) {
             if (customerPhone) refreshLoyaltyUI();
+            localStorage.removeItem('qrandgo_active_session');
             showLockScreen(
               "Mesa cerrada",
               "¡Gracias por tu visita! La cuenta de esta mesa se ha cerrado. Escanea el QR de nuevo si deseas iniciar otra comanda."
@@ -707,15 +747,14 @@
           total += cart[id] * parseFloat(item.price || 0);
         }
       });
+      
       const bar = document.getElementById('cartBar');
       if (count > 0) {
-        bar.classList.add('hidden'); // Fix visibility toggle logic
         bar.classList.remove('hidden');
         document.getElementById('cartCount').innerText = `${count} producto${count > 1 ? 's' : ''}`;
         document.getElementById('cartTotal').innerText = `${total.toFixed(2)} €`;
       } else {
         bar.classList.add('hidden');
-        closeModal();
       }
     }
 
@@ -907,13 +946,13 @@
 
         if (error) throw error;
 
-        // Limpiar carrito y recargar la página al instante sin alertas bloqueantes
+        // Limpiar carrito y recargar la página al instante de forma automática
         cart = {};
         document.getElementById('orderNotes').value = '';
         updateCartUI();
         closeModal();
-        
-        // Recarga limpia y directa para que la mesa quede lista
+
+        // Recarga automática instantánea
         location.reload();
 
       } catch (err) {
@@ -1299,6 +1338,7 @@
       const tokenMismatch = data.active_token !== savedToken;
 
       if (isExpired || tokenMismatch) {
+        localStorage.removeItem('qrandgo_active_session');
         showLockScreen(
           "Sesión finalizada",
           "La mesa ha superado el tiempo de seguridad o ha sido cerrada. Vuelve a escanear el QR."
