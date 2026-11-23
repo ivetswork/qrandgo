@@ -9,6 +9,25 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <!-- Modal de Política de Privacidad y Condiciones (Hostelero) -->
+  <div id="regPrivacyModal" class="fixed inset-0 bg-base-text/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-base-card rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto border border-base-border shadow-2xl text-left">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <h3 class="font-serif-title font-bold text-lg text-base-text">🔒 Privacidad y Condiciones</h3>
+        <button onclick="closeRegPrivacyModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs text-base-muted leading-relaxed">
+        <p><strong class="text-base-text">1. Objeto y Responsable:</strong> SW&amp;Go trata los datos de registro (nombre del local, correo electrónico y configuración de mesas/carta) para habilitar el acceso al panel de gestión y la carta digital.</p>
+        <p><strong class="text-base-text">2. Datos de comensales:</strong> El establecimiento actúa como responsable de los datos de fidelización (teléfonos) recogidos en su carta, y SW&amp;Go como encargado del tratamiento alojando la infraestructura técnica de forma segura.</p>
+        <p><strong class="text-base-text">3. Seguridad y confidencialidad:</strong> Las contraseñas se almacenan cifradas y los datos no se ceden a terceros con fines comerciales.</p>
+        <p><strong class="text-base-text">4. Derechos y baja:</strong> El titular del establecimiento puede solicitar la modificación, exportación o eliminación completa de su cuenta y datos asociados en cualquier momento.</p>
+      </div>
+      <button onclick="closeRegPrivacyModal()" class="w-full bg-base-text hover:bg-black text-base-card font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+        Entendido
+      </button>
+    </div>
+  </div>
+
   <script>
     tailwind.config = {
       theme: {
@@ -77,6 +96,18 @@
         <input type="password" id="restPassword" required placeholder="••••••••" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-xs font-bold text-base-text outline-none focus:border-primary">
       </div>
 
+      <div class="space-y-2 pt-1">
+        <label class="flex items-start gap-2 text-[11px] text-base-muted cursor-pointer select-none leading-snug">
+          <input type="checkbox" id="regPrivacyCheckbox" required class="mt-0.5 rounded accent-primary">
+          <span>
+            He leído y acepto la <button type="button" onclick="openRegPrivacyModal()" class="text-primary-dark font-bold underline">Política de Privacidad y Condiciones de Uso</button> de SW&amp;Go.
+          </span>
+        </label>
+        <p class="text-[10px] text-base-muted/80 leading-relaxed bg-base-bg p-2.5 rounded-xl border border-base-border">
+          <strong>Información RGPD:</strong> Tus datos de acceso y los del establecimiento se tratarán únicamente para prestar el servicio de carta digital y gestión de sala. Puedes ejercer tus derechos o solicitar la baja de tu cuenta en cualquier momento.
+        </p>
+      </div>
+
       <p id="formError" class="hidden text-xs text-red-600 font-bold text-center"></p>
       <p id="formSuccess" class="hidden text-xs text-emerald-600 font-bold text-center"></p>
 
@@ -107,8 +138,20 @@
       document.getElementById('restSlug').value = slugVal;
     });
 
+    function openRegPrivacyModal() {
+      document.getElementById('regPrivacyModal').classList.remove('hidden');
+    }
+
+    function closeRegPrivacyModal() {
+      document.getElementById('regPrivacyModal').classList.add('hidden');
+    }
+
     async function handleRegister(e) {
       e.preventDefault();
+      if (!document.getElementById('regPrivacyCheckbox').checked) {
+        alert("Debes aceptar la Política de Privacidad y Condiciones de Uso para registrar tu local.");
+        return;
+      }
       const name = document.getElementById('restName').value.trim();
       const slug = document.getElementById('restSlug').value.trim().toLowerCase();
       const totalTables = parseInt(document.getElementById('restTables').value, 10);

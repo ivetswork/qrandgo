@@ -55,6 +55,26 @@
     </div>
   </div>
 
+  <!-- Modal de Política de Privacidad (Cliente) -->
+  <div id="privacyModal" class="fixed inset-0 bg-base-text/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-base-card rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto border border-base-border shadow-2xl text-left">
+      <div class="flex justify-between items-center pb-3 border-b border-base-border">
+        <h3 class="font-serif-title font-bold text-lg text-base-text">🔒 Política de Privacidad</h3>
+        <button onclick="closePrivacyModal()" class="text-base-muted hover:text-base-text text-2xl font-bold">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs text-base-muted leading-relaxed">
+        <p><strong class="text-base-text">1. Responsable del tratamiento:</strong> El establecimiento titular de esta carta digital (<span id="privacyModalRestName">el restaurante</span>).</p>
+        <p><strong class="text-base-text">2. Finalidad:</strong> Gestionar tu participación en el programa de fidelización (acumulación de sellos por visita y canje de premios en la ruleta).</p>
+        <p><strong class="text-base-text">3. Legitimación:</strong> Tu consentimiento expreso al marcar la casilla de aceptación e introducir tu número de teléfono.</p>
+        <p><strong class="text-base-text">4. Conservación y cesión:</strong> Tus datos no se ceden a terceros ni se utilizan para enviar publicidad comercial no solicitada. Se conservarán mientras mantengas activa tu tarjeta de sellos.</p>
+        <p><strong class="text-base-text">5. Tus derechos:</strong> Puedes acceder, rectificar o solicitar la supresión de tu teléfono y sellos en cualquier momento solicitándolo al personal del establecimiento.</p>
+      </div>
+      <button onclick="closePrivacyModal()" class="w-full bg-base-text hover:bg-black text-base-card font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+        Entendido
+      </button>
+    </div>
+  </div>
+
   <script>
     tailwind.config = {
       theme: {
@@ -282,6 +302,16 @@
           Introduce tu número de móvil para guardar tus sellos en este local. Solo te lo pediremos una vez.
         </p>
         <input type="tel" id="loyaltyPhoneInput" placeholder="Ej. 612345678" class="w-full bg-base-bg border border-base-border rounded-xl p-3 text-sm font-bold outline-none focus:border-primary/50 text-base-text">
+        <label class="flex items-start gap-2 text-[11px] text-base-muted cursor-pointer select-none leading-snug">
+  <input type="checkbox" id="privacyAcceptCheckbox" class="mt-0.5 rounded accent-primary">
+  <span>
+    He leído y acepto la <button type="button" onclick="openPrivacyModal()" class="text-primary-dark font-bold underline">Política de Privacidad</button> para acumular sellos y premios en este establecimiento.
+  </span>
+</label>
+
+<p class="text-[10px] text-base-muted/80 leading-relaxed bg-base-bg p-2.5 rounded-xl border border-base-border">
+  <strong>Información básica RGPD:</strong> Responsable: <span id="privacyRestNameShort">el establecimiento</span>. Finalidad: gestión de tu tarjeta de fidelización y canje de premios. No cedemos tus datos a terceros ni enviamos publicidad no solicitada. Puedes solicitar la baja en cualquier momento.
+</p>
         <button onclick="saveCustomerPhone()" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-md transition-all text-xs uppercase tracking-wider">
           Guardar y ver mis sellos
         </button>
@@ -538,6 +568,10 @@
       document.getElementById('mesaNumberBox').innerText = numeroMesa;
       document.getElementById('billMesaTitle').innerText = `${tableData.table_number} • Consumo activo`;
       document.getElementById('loyaltyRestName').innerText = `Sellos • ${restaurantData.name}`;
+      const shortPriv = document.getElementById('privacyRestNameShort');
+      if (shortPriv) shortPriv.innerText = restaurantData.name;
+      const modalPriv = document.getElementById('privacyModalRestName');
+      if (modalPriv) modalPriv.innerText = restaurantData.name;
       document.title = `${restaurantData.name} - Carta Digital`;
 
       sb.channel('client-categories-' + restaurantData.id)
@@ -1324,7 +1358,21 @@
       }
     }
 
+    function openPrivacyModal() {
+      document.getElementById('privacyModal').classList.remove('hidden');
+    }
+
+    function closePrivacyModal() {
+      document.getElementById('privacyModal').classList.add('hidden');
+    }
+
     async function saveCustomerPhone() {
+      const privacyChk = document.getElementById('privacyAcceptCheckbox');
+      if (privacyChk && !privacyChk.checked) {
+        alert("Debes aceptar la Política de Privacidad para registrar tu teléfono y acumular sellos.");
+        return;
+      }
+
       const rawPhone = document.getElementById('loyaltyPhoneInput').value.replace(/\s+/g, '').trim();
       if (rawPhone.length < 6) {
         alert("Introduce un número de teléfono válido.");
