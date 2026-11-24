@@ -2026,6 +2026,17 @@
         rouletteEditorInitialized = true;
       }
       const container = document.getElementById('loyaltyList');
+      const query = (document.getElementById('phoneSearchInput')?.value || '').trim().toLowerCase();
+      const required = restaurantData?.stamps_required || 8;
+
+      const filtered = query
+        ? loyaltyCards.filter(c => String(c.phone_number || '').toLowerCase().includes(query))
+        : loyaltyCards;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="col-span-full text-center py-10 text-xs text-base-muted">No hay tarjetas de fidelización${query ? ' que coincidan con ese teléfono' : ' registradas todavía'}.</p>`;
+        return;
+      }
 
       container.innerHTML = filtered.map(card => {
         const canRedeem = card.stamps_count >= required;
